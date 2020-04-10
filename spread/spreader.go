@@ -16,6 +16,13 @@ type Spreader struct {
 	watchers []watcher
 }
 
+func NewSpreader() *Spreader {
+	return &Spreader{
+		Mutex:    sync.Mutex{},
+		watchers: make([]watcher, 0),
+	}
+}
+
 func (s *Spreader) AddWatcher(key object.Key, ch chan object.Object) {
 	s.Lock()
 	defer s.Unlock()
