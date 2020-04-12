@@ -2,20 +2,16 @@ package storage
 
 import (
 	"fmt"
-	"sync"
 
 	"gitlab.com/Syfract/Xerac/gimulator/object"
 )
 
 type Memory struct {
-	sync.Mutex
-
 	storage map[object.Key]object.Object
 }
 
 func NewMemory() *Memory {
 	return &Memory{
-		Mutex:   sync.Mutex{},
 		storage: make(map[object.Key]object.Object),
 	}
 }
@@ -38,9 +34,6 @@ func (m *Memory) Find(key object.Key) ([]object.Object, error) {
 }
 
 func (m *Memory) get(key object.Key) (object.Object, error) {
-	m.Lock()
-	defer m.Unlock()
-
 	if object, exists := m.storage[key]; exists {
 		return object, nil
 	}
@@ -48,16 +41,10 @@ func (m *Memory) get(key object.Key) (object.Object, error) {
 }
 
 func (m *Memory) set(obj object.Object) {
-	m.Lock()
-	defer m.Unlock()
-
 	m.storage[obj.Key] = obj
 }
 
 func (m *Memory) del(key object.Key) error {
-	m.Lock()
-	defer m.Unlock()
-
 	if _, exists := m.storage[key]; exists {
 		delete(m.storage, key)
 		return nil
@@ -66,9 +53,6 @@ func (m *Memory) del(key object.Key) error {
 }
 
 func (m *Memory) find(key object.Key) []object.Object {
-	m.Lock()
-	defer m.Unlock()
-
 	result := make([]object.Object, 0)
 	for k, o := range m.storage {
 		if k.Match(key) {

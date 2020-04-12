@@ -1,8 +1,6 @@
-package spread
+package simulator
 
 import (
-	"sync"
-
 	"gitlab.com/Syfract/Xerac/gimulator/object"
 )
 
@@ -11,22 +9,17 @@ type watcher struct {
 	ch  chan object.Object
 }
 
-type Spreader struct {
-	sync.Mutex
+type spreader struct {
 	watchers []watcher
 }
 
-func NewSpreader() *Spreader {
-	return &Spreader{
-		Mutex:    sync.Mutex{},
+func Newspreader() *spreader {
+	return &spreader{
 		watchers: make([]watcher, 0),
 	}
 }
 
-func (s *Spreader) AddWatcher(key object.Key, ch chan object.Object) {
-	s.Lock()
-	defer s.Unlock()
-
+func (s *spreader) AddWatcher(key object.Key, ch chan object.Object) {
 	watcher := watcher{
 		key: key,
 		ch:  ch,
@@ -35,10 +28,7 @@ func (s *Spreader) AddWatcher(key object.Key, ch chan object.Object) {
 	s.watchers = append(s.watchers, watcher)
 }
 
-func (s *Spreader) Spread(obj object.Object) {
-	s.Lock()
-	defer s.Unlock()
-
+func (s *spreader) Spread(obj object.Object) {
 	key := obj.Key
 	for _, w := range s.watchers {
 		if w.key.Match(key) {
