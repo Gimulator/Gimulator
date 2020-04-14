@@ -13,11 +13,11 @@ type Simulator struct {
 	storage  storage.Storage
 }
 
-func NewSimulator() *Simulator {
+func NewSimulator(strg storage.Storage) *Simulator {
 	return &Simulator{
 		Mutex:    sync.Mutex{},
 		spreader: Newspreader(),
-		storage:  storage.NewMemory(),
+		storage:  strg,
 	}
 }
 
