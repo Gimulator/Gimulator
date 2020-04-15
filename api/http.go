@@ -2,12 +2,12 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 	"gitlab.com/Syfract/Xerac/gimulator/auth"
 	"gitlab.com/Syfract/Xerac/gimulator/object"
 	"gitlab.com/Syfract/Xerac/gimulator/simulator"
@@ -23,6 +23,7 @@ type Manager struct {
 	router    *mux.Router
 	simulator *simulator.Simulator
 	auth      *auth.Auth
+	log       *logrus.Entry
 }
 
 func NewManager(sim *simulator.Simulator, auth *auth.Auth) *Manager {
@@ -30,6 +31,7 @@ func NewManager(sim *simulator.Simulator, auth *auth.Auth) *Manager {
 		Mutex:     sync.Mutex{},
 		simulator: sim,
 		auth:      auth,
+		log:       logrus.WithField("Entity", "http"),
 	}
 	m.route()
 
@@ -37,6 +39,7 @@ func NewManager(sim *simulator.Simulator, auth *auth.Auth) *Manager {
 }
 
 func (m *Manager) ListenAndServe(bind string) error {
+	m.log.Info("Start to Listen and Serve")
 	if m.router == nil {
 		m.route()
 	}
@@ -44,6 +47,7 @@ func (m *Manager) ListenAndServe(bind string) error {
 }
 
 func (m *Manager) route() {
+	m.log.Info("Start to set router")
 	r := mux.NewRouter()
 	r.HandleFunc("/register", m.handleRegister).Methods("POST")
 	r.HandleFunc("/get", m.handleGet).Methods("POST")
@@ -56,66 +60,77 @@ func (m *Manager) route() {
 }
 
 func (m *Manager) handleGet(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("-----------------Get")
+	log := m.log.WithField("Request", "get")
+	log.Info("Start to handle request")
 	var (
 		obj object.Object
 		cli auth.Client
 	)
 	status, msg := m.auth.HandleRequest(w, r, auth.Get, &cli, &obj)
 	if status != http.StatusAccepted {
+		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
 		http.Error(w, msg, status)
 		return
 	}
 
 	result, err := m.simulator.Get(obj.Key)
 	if err != nil {
+		log.WithError(err).Debug("Error in get result from simulator")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.WithError(err).Debug("Can not encode result of simulator")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
 
 func (m *Manager) handleFind(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("-----------------Find")
+	log := m.log.WithField("Request", "find")
+	log.Info("Start to handle request")
 	var (
 		obj object.Object
 		cli auth.Client
 	)
 	status, msg := m.auth.HandleRequest(w, r, auth.Find, &cli, &obj)
 	if status != http.StatusAccepted {
+		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
 		http.Error(w, msg, status)
 		return
 	}
 
 	objectList, err := m.simulator.Find(obj.Key)
 	if err != nil {
+		log.WithError(err).Debug("Error in get result from simulator")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if err := json.NewEncoder(w).Encode(objectList); err != nil {
+		log.WithError(err).Debug("Can not encode result of simulator")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
 
 func (m *Manager) handleSet(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("-----------------Set")
+	log := m.log.WithField("Request", "set")
+	log.Info("Start to handle request")
 	var (
 		obj object.Object
 		cli auth.Client
 	)
 	status, msg := m.auth.HandleRequest(w, r, auth.Set, &cli, &obj)
 	if status != http.StatusAccepted {
+		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
 		http.Error(w, msg, status)
 		return
 	}
 
 	if err := m.simulator.Set(obj); err != nil {
+		log.WithError(err).Debug("Error in get result from simulator")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -123,18 +138,21 @@ func (m *Manager) handleSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) handleDelete(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("-----------------Delete")
+	log := m.log.WithField("Request", "delete")
+	log.Info("Start to handle request")
 	var (
 		obj object.Object
 		cli auth.Client
 	)
 	status, msg := m.auth.HandleRequest(w, r, auth.Delete, &cli, &obj)
 	if status != http.StatusAccepted {
+		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
 		http.Error(w, msg, status)
 		return
 	}
 
 	if err := m.simulator.Delete(obj.Key); err != nil {
+		log.WithError(err).Debug("Error in get result from simulator")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -142,29 +160,37 @@ func (m *Manager) handleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("-----------------Watch")
+	log := m.log.WithField("Request", "watch")
+	log.Info("Start to handle request")
 	var (
 		obj object.Object
 		cli auth.Client
 	)
 	status, msg := m.auth.HandleRequest(w, r, auth.Watch, &cli, &obj)
 	if status != http.StatusAccepted {
+		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
 		http.Error(w, msg, status)
 		return
 	}
 
-	m.simulator.Watch(obj.Key, cli.GetChan())
+	if err := m.simulator.Watch(obj.Key, cli.GetChan()); err != nil {
+		log.WithError(err).Debug("Error in get result from simulator")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
 func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("-----------------Register")
+	log := m.log.WithField("Request", "register")
+	log.Info("Start to handle request")
 	var (
 		obj object.Object
 		cli auth.Client
 	)
 	status, msg := m.auth.RegisterNewClient(w, r, &cli, &obj)
 	if status != http.StatusAccepted {
+		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
 		http.Error(w, msg, status)
 		return
 	}
@@ -177,10 +203,11 @@ func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("-----------------Socket")
+	log := m.log.WithField("Request", "socket")
+	log.Info("Start to handle request")
 	cookie, err := r.Cookie("token")
 	if err != nil {
-		fmt.Println(err)
+		log.WithError(err).Debug("Can not get token from request")
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -188,13 +215,16 @@ func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
 
 	cli, status, msg := m.auth.GetClientWithToken(token)
 	if status != http.StatusAccepted {
+		log.WithField("Status", status).WithField("message", msg).Debug("Error in getting client from auth")
 		http.Error(w, msg, status)
 		return
 	}
 
+	log.Info("Start to upgrade connection")
 	conn, err := websocket.Upgrade(w, r, w.Header(), readBufSize, writeBufSize)
 	if err != nil {
-		http.Error(w, "can not open socket", http.StatusInternalServerError)
+		log.WithError(err).Debug("Can not upgrade connection")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
