@@ -228,5 +228,5 @@ func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cli.SetConn(conn)
+	cli.Reconcile(conn)
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/sirupsen/logrus"
 	"gitlab.com/Syfract/Xerac/gimulator/object"
 	"gopkg.in/yaml.v2"
 )
@@ -48,6 +49,7 @@ type Auth struct {
 	Roles         map[string]Role `json:"roles"`
 	tokenToClient map[string]*Client
 	nameToClient  map[string]*Client
+	log           *logrus.Entry
 }
 
 func NewAuth(path string) (*Auth, error) {
@@ -66,6 +68,7 @@ func NewAuth(path string) (*Auth, error) {
 		Roles:         nil,
 		nameToClient:  make(map[string]*Client),
 		tokenToClient: make(map[string]*Client),
+		log:           logrus.WithField("Entity", "auth"),
 	}
 
 	if err := a.loadConfigs(); err != nil {
@@ -76,21 +79,26 @@ func NewAuth(path string) (*Auth, error) {
 }
 
 func (a *Auth) loadConfigs() error {
+	a.log.Info("Start to load config")
 	a.Lock()
 	a.Unlock()
 
 	file, err := os.Open(a.path)
 	if err != nil {
+		a.log.WithError(err).Error("Can not open config file")
 		return err
 	}
 
 	if err := yaml.NewDecoder(file).Decode(&a.Roles); err != nil {
+		a.log.WithError(err).Error("Can not decode config file")
 		return err
 	}
 	return nil
 }
 
 func (a *Auth) Authenticate(cred Credential) (int, string) {
+	a.log.Info("Start to Authenticate credential")
+
 	role, status, msg := a.getRole(cred.Role)
 	if status != http.StatusAccepted {
 		return status, msg
@@ -103,6 +111,8 @@ func (a *Auth) Authenticate(cred Credential) (int, string) {
 }
 
 func (a *Auth) GetClientWithName(name string) (*Client, int, string) {
+	a.log.Info("Start to get client with name")
+
 	if cli, exist := a.nameToClient[name]; exist {
 		return cli, http.StatusAccepted, ""
 	}
@@ -110,6 +120,7 @@ func (a *Auth) GetClientWithName(name string) (*Client, int, string) {
 }
 
 func (a *Auth) GetClientWithToken(token string) (*Client, int, string) {
+	a.log.Info("Start to get client with token")
 	if cli, exist := a.tokenToClient[token]; exist {
 		return cli, http.StatusAccepted, ""
 	}
@@ -117,6 +128,7 @@ func (a *Auth) GetClientWithToken(token string) (*Client, int, string) {
 }
 
 func (a *Auth) CreateNewClient(cred Credential) (*Client, int, string) {
+	a.log.Info("Start to create a new client")
 	a.Lock()
 	defer a.Unlock()
 
@@ -133,6 +145,7 @@ func (a *Auth) CreateNewClient(cred Credential) (*Client, int, string) {
 }
 
 func (a *Auth) Authorize(cli *Client, key object.Key, method Method) (int, string) {
+	a.log.Info("Start to authorize")
 	role := cli.cred.Role
 	if actualRole, exists := a.Roles[role]; exists {
 		if actualType, exists := actualRole.Types[key.Type]; exists && actualType.match(key, method) {
@@ -144,6 +157,7 @@ func (a *Auth) Authorize(cli *Client, key object.Key, method Method) (int, strin
 }
 
 func (a *Auth) HandleRequest(w http.ResponseWriter, r *http.Request, method Method, cli *Client, obj *object.Object) (int, string) {
+	a.log.Info("Start to handle request")
 	var (
 		token  string
 		status int
@@ -176,6 +190,7 @@ func (a *Auth) HandleRequest(w http.ResponseWriter, r *http.Request, method Meth
 }
 
 func (a *Auth) RegisterNewClient(w http.ResponseWriter, r *http.Request, cli *Client, obj *object.Object) (int, string) {
+	a.log.Info("Start to register a new client")
 	var cred Credential
 	status, msg := decodeJSONBody(w, r, &cred)
 	if status != http.StatusAccepted {
@@ -203,6 +218,7 @@ func (a *Auth) RegisterNewClient(w http.ResponseWriter, r *http.Request, cli *Cl
 }
 
 func (a *Auth) getRole(role string) (Role, int, string) {
+	a.log.Info("Start to get role")
 	if r, ex := a.Roles[role]; ex {
 		return r, http.StatusAccepted, ""
 	}
