@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/golang/gddo/httputil/header"
+	uuid "github.com/satori/go.uuid"
 )
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) (int, string) {
@@ -76,4 +77,12 @@ func getCookie(r *http.Request) (string, int, string) {
 	}
 
 	return cookie.Value, http.StatusAccepted, ""
+}
+
+func newCookie() (string, int) {
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		return "", http.StatusInternalServerError
+	}
+	return uuid.String(), http.StatusAccepted
 }

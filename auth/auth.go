@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 
-	uuid "github.com/satori/go.uuid"
 	"gitlab.com/Syfract/Xerac/gimulator/object"
 	"gopkg.in/yaml.v2"
 )
@@ -43,6 +43,7 @@ type Role struct {
 }
 
 type Auth struct {
+	sync.Mutex
 	path          string
 	Roles         map[string]Role `json:"roles"`
 	tokenToClient map[string]*Client
@@ -60,6 +61,7 @@ func NewAuth(path string) (*Auth, error) {
 	}
 
 	a := Auth{
+		Mutex:         sync.Mutex{},
 		path:          path,
 		Roles:         nil,
 		nameToClient:  make(map[string]*Client),
@@ -74,6 +76,9 @@ func NewAuth(path string) (*Auth, error) {
 }
 
 func (a *Auth) loadConfigs() error {
+	a.Lock()
+	a.Unlock()
+
 	file, err := os.Open(a.path)
 	if err != nil {
 		return err
@@ -112,6 +117,9 @@ func (a *Auth) GetClientWithToken(token string) (*Client, int, string) {
 }
 
 func (a *Auth) CreateNewClient(cred Credential) (*Client, int, string) {
+	a.Lock()
+	defer a.Unlock()
+
 	token, status := newCookie()
 	if status != http.StatusAccepted {
 		return nil, status, "Can not generate new cookie"
@@ -133,13 +141,6 @@ func (a *Auth) Authorize(cli *Client, key object.Key, method Method) (int, strin
 		return http.StatusUnauthorized, fmt.Sprintf("you don't have access on '%v', with method '%s' and role %s", key, method, role)
 	}
 	return http.StatusNotFound, fmt.Sprintf("role '%s' does not exists", role)
-}
-
-func (a *Auth) getRole(role string) (Role, int, string) {
-	if r, ex := a.Roles[role]; ex {
-		return r, http.StatusAccepted, ""
-	}
-	return Role{}, http.StatusNotFound, fmt.Sprintf("Role %s does not exist", role)
 }
 
 func (a *Auth) HandleRequest(w http.ResponseWriter, r *http.Request, method Method, cli *Client, obj *object.Object) (int, string) {
@@ -201,10 +202,9 @@ func (a *Auth) RegisterNewClient(w http.ResponseWriter, r *http.Request, cli *Cl
 	return http.StatusAccepted, ""
 }
 
-func newCookie() (string, int) {
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		return "", http.StatusInternalServerError
+func (a *Auth) getRole(role string) (Role, int, string) {
+	if r, ex := a.Roles[role]; ex {
+		return r, http.StatusAccepted, ""
 	}
-	return uuid.String(), http.StatusAccepted
+	return Role{}, http.StatusNotFound, fmt.Sprintf("Role %s does not exist", role)
 }

@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"fmt"
+
 	"github.com/gorilla/websocket"
 	"gitlab.com/Syfract/Xerac/gimulator/object"
 )
@@ -34,7 +36,12 @@ func (c *Client) GetToken() string {
 	return c.token
 }
 
-func (c *Client) read() {
+func (c *Client) SetConn(conn *websocket.Conn) {
+	c.conn = conn
+	go c.write()
+}
+
+func (c *Client) write() {
 	var (
 		err error
 		obj object.Object
@@ -44,11 +51,13 @@ func (c *Client) read() {
 		obj = <-c.ch
 		err = c.conn.WriteMessage(websocket.PingMessage, []byte{})
 		if err != nil {
+			fmt.Println("client-write ", err)
 			return
 		}
 
 		err = c.conn.WriteJSON(obj)
 		if err != nil {
+			fmt.Println("client-write ", err)
 			return
 		}
 	}
