@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/sirupsen/logrus"
 	"gitlab.com/Syfract/Xerac/gimulator/object"
 	"gitlab.com/Syfract/Xerac/gimulator/storage"
 )
@@ -12,6 +13,7 @@ type Simulator struct {
 	sync.Mutex
 	spreader *spreader
 	storage  storage.Storage
+	log      *logrus.Entry
 }
 
 func NewSimulator(strg storage.Storage) *Simulator {
@@ -19,10 +21,12 @@ func NewSimulator(strg storage.Storage) *Simulator {
 		Mutex:    sync.Mutex{},
 		spreader: Newspreader(),
 		storage:  strg,
+		log:      logrus.WithField("Entity", "simulator"),
 	}
 }
 
 func (s *Simulator) Get(key object.Key) (object.Object, error) {
+	s.log.Info("Start to handle get")
 	s.Lock()
 	s.Unlock()
 
@@ -30,6 +34,7 @@ func (s *Simulator) Get(key object.Key) (object.Object, error) {
 }
 
 func (s *Simulator) Set(obj object.Object) error {
+	s.log.Info("Start to handle set")
 	s.Lock()
 	s.Unlock()
 
@@ -42,6 +47,7 @@ func (s *Simulator) Set(obj object.Object) error {
 }
 
 func (s *Simulator) Delete(key object.Key) error {
+	s.log.Info("Start to handle delete")
 	s.Lock()
 	s.Unlock()
 
@@ -49,6 +55,7 @@ func (s *Simulator) Delete(key object.Key) error {
 }
 
 func (s *Simulator) Find(key object.Key) ([]object.Object, error) {
+	s.log.Info("Start to handle find")
 	s.Lock()
 	s.Unlock()
 
@@ -56,10 +63,12 @@ func (s *Simulator) Find(key object.Key) ([]object.Object, error) {
 }
 
 func (s *Simulator) Watch(key object.Key, ch chan object.Object) error {
+	s.log.Info("Start to handle watch")
 	s.Lock()
 	s.Unlock()
 
 	if ch == nil {
+		s.log.Error("nil channel for watch command")
 		return fmt.Errorf("nil channel")
 	}
 
