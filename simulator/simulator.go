@@ -1,6 +1,7 @@
 package simulator
 
 import (
+	"fmt"
 	"sync"
 
 	"gitlab.com/Syfract/Xerac/gimulator/object"
@@ -54,9 +55,14 @@ func (s *Simulator) Find(key object.Key) ([]object.Object, error) {
 	return s.storage.Find(key)
 }
 
-func (s *Simulator) Watch(key object.Key, ch chan object.Object) {
+func (s *Simulator) Watch(key object.Key, ch chan object.Object) error {
 	s.Lock()
 	s.Unlock()
 
+	if ch == nil {
+		return fmt.Errorf("nil channel")
+	}
+
 	s.spreader.AddWatcher(key, ch)
+	return nil
 }
