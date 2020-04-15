@@ -6,7 +6,7 @@ type Key struct {
 	Name      string
 }
 
-func (k Key) Equal(key Key) bool {
+func (k *Key) Equal(key *Key) bool {
 	if k.Type != key.Type {
 		return false
 	} else if k.Namespace != key.Namespace {
@@ -17,7 +17,7 @@ func (k Key) Equal(key Key) bool {
 	return true
 }
 
-func (k Key) Match(key Key) bool {
+func (k *Key) Match(key *Key) bool {
 	if k.Type != "" && k.Type != key.Type {
 		return false
 	} else if k.Namespace != "" && k.Namespace != key.Namespace {
@@ -29,6 +29,6 @@ func (k Key) Match(key Key) bool {
 }
 
 type Object struct {
-	Key   Key
+	Key   *Key
 	Value interface{}
 }

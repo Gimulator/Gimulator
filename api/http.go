@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -16,6 +17,7 @@ import (
 const (
 	readBufSize  = 1024
 	writeBufSize = 1024
+	tokenKey     = "token"
 )
 
 type Manager struct {
@@ -24,18 +26,20 @@ type Manager struct {
 	simulator *simulator.Simulator
 	auth      *auth.Auth
 	log       *logrus.Entry
+	clients   map[string]*client
 }
 
 func NewManager(sim *simulator.Simulator, auth *auth.Auth) *Manager {
-	m := Manager{
+	m := &Manager{
 		Mutex:     sync.Mutex{},
 		simulator: sim,
 		auth:      auth,
 		log:       logrus.WithField("Entity", "http"),
+		clients:   make(map[string]*client),
 	}
 	m.route()
 
-	return &m
+	return m
 }
 
 func (m *Manager) ListenAndServe(bind string) error {
@@ -62,13 +66,24 @@ func (m *Manager) route() {
 func (m *Manager) handleGet(w http.ResponseWriter, r *http.Request) {
 	log := m.log.WithField("Request", "get")
 	log.Info("Start to handle request")
-	var (
-		obj object.Object
-		cli auth.Client
-	)
-	status, msg := m.auth.HandleRequest(w, r, auth.Get, &cli, &obj)
-	if status != http.StatusAccepted {
-		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
+
+	cli, status, msg := m.validateToken(r)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
+		http.Error(w, msg, status)
+		return
+	}
+
+	var obj *object.Object
+	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
+		http.Error(w, msg, status)
+		return
+	}
+
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -86,17 +101,27 @@ func (m *Manager) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
 func (m *Manager) handleFind(w http.ResponseWriter, r *http.Request) {
 	log := m.log.WithField("Request", "find")
 	log.Info("Start to handle request")
-	var (
-		obj object.Object
-		cli auth.Client
-	)
-	status, msg := m.auth.HandleRequest(w, r, auth.Find, &cli, &obj)
-	if status != http.StatusAccepted {
-		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
+
+	cli, status, msg := m.validateToken(r)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
+		http.Error(w, msg, status)
+		return
+	}
+
+	var obj *object.Object
+	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
+		http.Error(w, msg, status)
+		return
+	}
+
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -118,13 +143,24 @@ func (m *Manager) handleFind(w http.ResponseWriter, r *http.Request) {
 func (m *Manager) handleSet(w http.ResponseWriter, r *http.Request) {
 	log := m.log.WithField("Request", "set")
 	log.Info("Start to handle request")
-	var (
-		obj object.Object
-		cli auth.Client
-	)
-	status, msg := m.auth.HandleRequest(w, r, auth.Set, &cli, &obj)
-	if status != http.StatusAccepted {
-		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
+
+	cli, status, msg := m.validateToken(r)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
+		http.Error(w, msg, status)
+		return
+	}
+
+	var obj *object.Object
+	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
+		http.Error(w, msg, status)
+		return
+	}
+
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -140,13 +176,24 @@ func (m *Manager) handleSet(w http.ResponseWriter, r *http.Request) {
 func (m *Manager) handleDelete(w http.ResponseWriter, r *http.Request) {
 	log := m.log.WithField("Request", "delete")
 	log.Info("Start to handle request")
-	var (
-		obj object.Object
-		cli auth.Client
-	)
-	status, msg := m.auth.HandleRequest(w, r, auth.Delete, &cli, &obj)
-	if status != http.StatusAccepted {
-		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
+
+	cli, status, msg := m.validateToken(r)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
+		http.Error(w, msg, status)
+		return
+	}
+
+	var obj *object.Object
+	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
+		http.Error(w, msg, status)
+		return
+	}
+
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -162,13 +209,24 @@ func (m *Manager) handleDelete(w http.ResponseWriter, r *http.Request) {
 func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
 	log := m.log.WithField("Request", "watch")
 	log.Info("Start to handle request")
-	var (
-		obj object.Object
-		cli auth.Client
-	)
-	status, msg := m.auth.HandleRequest(w, r, auth.Watch, &cli, &obj)
-	if status != http.StatusAccepted {
-		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
+
+	cli, status, msg := m.validateToken(r)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
+		http.Error(w, msg, status)
+		return
+	}
+
+	var obj *object.Object
+	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
+		http.Error(w, msg, status)
+		return
+	}
+
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -184,38 +242,42 @@ func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
 func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
 	log := m.log.WithField("Request", "register")
 	log.Info("Start to handle request")
-	var (
-		obj object.Object
-		cli auth.Client
-	)
-	status, msg := m.auth.RegisterNewClient(w, r, &cli, &obj)
-	if status != http.StatusAccepted {
-		log.WithField("Status", status).WithField("message", msg).Debug("Error in validation from auth")
+
+	var cred *Credential
+	if status, msg := decodeJSONBody(w, r, &cred); status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
 		http.Error(w, msg, status)
 		return
+	}
+
+	if status, msg := m.auth.Authenticate(cred.Role, cred.Password); status != http.StatusOK {
+		log.WithField("status", status).WithField("message", msg).Debug("Fail to authenticate")
+		http.Error(w, msg, status)
+		return
+	}
+
+	cli, status, msg := m.getClientWithUsername(cred.Username)
+	if status != http.StatusOK {
+		if cli, status, msg = m.registerNewClient(cred); status != http.StatusOK {
+			http.Error(w, msg, status)
+			return
+		}
 	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:  "token",
 		Value: cli.GetToken(),
 	})
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
 	log := m.log.WithField("Request", "socket")
 	log.Info("Start to handle request")
-	cookie, err := r.Cookie("token")
-	if err != nil {
-		log.WithError(err).Debug("Can not get token from request")
-		http.Error(w, "invalid token", http.StatusUnauthorized)
-		return
-	}
-	token := cookie.Value
 
-	cli, status, msg := m.auth.GetClientWithToken(token)
-	if status != http.StatusAccepted {
-		log.WithField("Status", status).WithField("message", msg).Debug("Error in getting client from auth")
+	cli, status, msg := m.validateToken(r)
+	if status != http.StatusOK {
+		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
 		http.Error(w, msg, status)
 		return
 	}
@@ -229,4 +291,58 @@ func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cli.Reconcile(conn)
+}
+
+func (m *Manager) validateToken(r *http.Request) (*client, int, string) {
+	cookie, err := r.Cookie(tokenKey)
+	if err != nil {
+		return nil, http.StatusUnauthorized, fmt.Sprintf("Invalid token")
+	}
+	token := cookie.Value
+
+	cli, status, msg := m.getClientWithToken(token)
+	if status != http.StatusOK {
+		return nil, http.StatusUnauthorized, msg
+	}
+
+	if cli.token != token {
+		return nil, http.StatusUnauthorized, "Invalid token"
+	}
+	return cli, http.StatusOK, ""
+}
+
+func (m *Manager) getClientWithToken(token string) (*client, int, string) {
+	m.Lock()
+	defer m.Unlock()
+	m.log.Info("Start to get a client")
+
+	if cli, exists := m.clients[token]; exists {
+		return cli, http.StatusOK, ""
+	}
+	return nil, http.StatusNotFound, "There is no client with the specified cookie"
+}
+
+func (m *Manager) getClientWithUsername(username string) (*client, int, string) {
+	for _, c := range m.clients {
+		if c.cred.Username == username {
+			return c, http.StatusOK, ""
+		}
+	}
+	return nil, http.StatusNotFound, "User not found"
+}
+
+func (m *Manager) registerNewClient(cred *Credential) (*client, int, string) {
+	m.Lock()
+	defer m.Unlock()
+	m.log.Info("Start to create a new client")
+
+	token, status := newCookie()
+	if status != http.StatusOK {
+		return nil, status, "Can not generate new cookie"
+	}
+
+	client := NewClient(cred, token)
+	m.clients[token] = client
+
+	return client, http.StatusOK, ""
 }

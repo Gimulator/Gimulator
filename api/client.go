@@ -1,7 +1,6 @@
-package auth
+package api
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -23,31 +22,31 @@ type Credential struct {
 	Role     string
 }
 
-type Client struct {
-	cred  Credential
-	ch    chan object.Object
+type client struct {
+	cred  *Credential
+	ch    chan *object.Object
 	token string
 	log   *logrus.Entry
 }
 
-func NewClient(cred Credential, token string) *Client {
-	return &Client{
+func NewClient(cred *Credential, token string) *client {
+	return &client{
 		cred:  cred,
 		token: token,
-		ch:    make(chan object.Object, 128),
+		ch:    make(chan *object.Object),
 		log:   logrus.WithField("Entity", "client"),
 	}
 }
 
-func (c *Client) GetChan() chan object.Object {
+func (c *client) GetChan() chan *object.Object {
 	return c.ch
 }
 
-func (c *Client) GetToken() string {
+func (c *client) GetToken() string {
 	return c.token
 }
 
-func (c *Client) Reconcile(conn *websocket.Conn) {
+func (c *client) Reconcile(conn *websocket.Conn) {
 	c.log.Info("Start to write")
 	defer c.log.Debug("End of writing to the connection")
 
@@ -69,7 +68,6 @@ func (c *Client) Reconcile(conn *websocket.Conn) {
 			err = conn.WriteJSON(obj)
 			if err != nil {
 				c.log.WithError(err).Error("Can not write json to connection")
-				fmt.Println("client-write ", err)
 				return
 			}
 		case <-ticker.C:

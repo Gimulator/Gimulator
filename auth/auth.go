@@ -26,7 +26,7 @@ type Type struct {
 	Methods []Method   `json:"methods"`
 }
 
-func (t *Type) match(key object.Key, method Method) bool {
+func (t *Type) match(key *object.Key, method Method) bool {
 	if !t.Key.Match(key) {
 		return false
 	}
@@ -45,11 +45,9 @@ type Role struct {
 
 type Auth struct {
 	sync.Mutex
-	path          string
-	Roles         map[string]Role `json:"roles"`
-	tokenToClient map[string]*Client
-	nameToClient  map[string]*Client
-	log           *logrus.Entry
+	path  string
+	Roles map[string]Role `json:"roles"`
+	log   *logrus.Entry
 }
 
 func NewAuth(path string) (*Auth, error) {
@@ -63,12 +61,10 @@ func NewAuth(path string) (*Auth, error) {
 	}
 
 	a := Auth{
-		Mutex:         sync.Mutex{},
-		path:          path,
-		Roles:         nil,
-		nameToClient:  make(map[string]*Client),
-		tokenToClient: make(map[string]*Client),
-		log:           logrus.WithField("Entity", "auth"),
+		Mutex: sync.Mutex{},
+		path:  path,
+		Roles: make(map[string]Role),
+		log:   logrus.WithField("Entity", "auth"),
 	}
 
 	if err := a.loadConfigs(); err != nil {
@@ -96,131 +92,35 @@ func (a *Auth) loadConfigs() error {
 	return nil
 }
 
-func (a *Auth) Authenticate(cred Credential) (int, string) {
+func (a *Auth) Authenticate(roleName, password string) (int, string) {
 	a.log.Info("Start to Authenticate credential")
 
-	role, status, msg := a.getRole(cred.Role)
-	if status != http.StatusAccepted {
+	role, status, msg := a.getRole(roleName)
+	if status != http.StatusOK {
 		return status, msg
 	}
-	if role.Password != cred.Password {
+	if role.Password != password {
 		return http.StatusUnauthorized, fmt.Sprintf("Credential is not valid")
 	}
 
-	return http.StatusAccepted, ""
+	return http.StatusOK, ""
 }
 
-func (a *Auth) GetClientWithName(name string) (*Client, int, string) {
-	a.log.Info("Start to get client with name")
-
-	if cli, exist := a.nameToClient[name]; exist {
-		return cli, http.StatusAccepted, ""
-	}
-	return nil, http.StatusNotFound, fmt.Sprintf("User with name '%s' does not exist", name)
-}
-
-func (a *Auth) GetClientWithToken(token string) (*Client, int, string) {
-	a.log.Info("Start to get client with token")
-	if cli, exist := a.tokenToClient[token]; exist {
-		return cli, http.StatusAccepted, ""
-	}
-	return nil, http.StatusNotFound, fmt.Sprintf("User with token '%s' does not exist", token)
-}
-
-func (a *Auth) CreateNewClient(cred Credential) (*Client, int, string) {
-	a.log.Info("Start to create a new client")
-	a.Lock()
-	defer a.Unlock()
-
-	token, status := newCookie()
-	if status != http.StatusAccepted {
-		return nil, status, "Can not generate new cookie"
-	}
-
-	client := NewClient(cred, token)
-	a.tokenToClient[token] = client
-	a.nameToClient[cred.Username] = client
-
-	return client, http.StatusAccepted, ""
-}
-
-func (a *Auth) Authorize(cli *Client, key object.Key, method Method) (int, string) {
+func (a *Auth) Authorize(role string, method Method, key *object.Key) (int, string) {
 	a.log.Info("Start to authorize")
-	role := cli.cred.Role
 	if actualRole, exists := a.Roles[role]; exists {
 		if actualType, exists := actualRole.Types[key.Type]; exists && actualType.match(key, method) {
-			return http.StatusAccepted, ""
+			return http.StatusOK, ""
 		}
 		return http.StatusUnauthorized, fmt.Sprintf("you don't have access on '%v', with method '%s' and role %s", key, method, role)
 	}
 	return http.StatusNotFound, fmt.Sprintf("role '%s' does not exists", role)
 }
 
-func (a *Auth) HandleRequest(w http.ResponseWriter, r *http.Request, method Method, cli *Client, obj *object.Object) (int, string) {
-	a.log.Info("Start to handle request")
-	var (
-		token  string
-		status int
-		msg    string
-		client *Client
-		object object.Object
-	)
-
-	token, status, msg = getCookie(r)
-	if status != http.StatusAccepted {
-		return status, msg
-	}
-
-	client, status, msg = a.GetClientWithToken(token)
-	if status != http.StatusAccepted {
-		return status, msg
-	}
-
-	if status, msg := decodeJSONBody(w, r, &object); status != http.StatusAccepted {
-		return status, msg
-	}
-
-	if status, msg := a.Authorize(client, object.Key, method); status != http.StatusAccepted {
-		return status, msg
-	}
-
-	*cli = *client
-	*obj = object
-	return http.StatusAccepted, ""
-}
-
-func (a *Auth) RegisterNewClient(w http.ResponseWriter, r *http.Request, cli *Client, obj *object.Object) (int, string) {
-	a.log.Info("Start to register a new client")
-	var cred Credential
-	status, msg := decodeJSONBody(w, r, &cred)
-	if status != http.StatusAccepted {
-		return status, msg
-	}
-	status, msg = a.Authenticate(cred)
-	if status != http.StatusAccepted {
-		return status, msg
-	}
-
-	var client *Client
-	client, status, msg = a.GetClientWithName(cred.Username)
-	if status == http.StatusAccepted {
-		*cli = *client
-		return http.StatusAccepted, ""
-	}
-
-	client, status, msg = a.CreateNewClient(cred)
-	if status != http.StatusAccepted {
-		return status, msg
-	}
-
-	*cli = *client
-	return http.StatusAccepted, ""
-}
-
 func (a *Auth) getRole(role string) (Role, int, string) {
 	a.log.Info("Start to get role")
 	if r, ex := a.Roles[role]; ex {
-		return r, http.StatusAccepted, ""
+		return r, http.StatusOK, ""
 	}
 	return Role{}, http.StatusNotFound, fmt.Sprintf("Role %s does not exist", role)
 }

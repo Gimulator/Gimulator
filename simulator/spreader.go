@@ -6,8 +6,8 @@ import (
 )
 
 type watcher struct {
-	key object.Key
-	ch  chan object.Object
+	key *object.Key
+	ch  chan *object.Object
 }
 
 type spreader struct {
@@ -22,7 +22,7 @@ func Newspreader() *spreader {
 	}
 }
 
-func (s *spreader) AddWatcher(key object.Key, ch chan object.Object) {
+func (s *spreader) AddWatcher(key *object.Key, ch chan *object.Object) {
 	s.log.Info("Add new watcher")
 	watcher := watcher{
 		key: key,
@@ -32,11 +32,11 @@ func (s *spreader) AddWatcher(key object.Key, ch chan object.Object) {
 	s.watchers = append(s.watchers, watcher)
 }
 
-func (s *spreader) Spread(obj object.Object) {
+func (s *spreader) Spread(obj *object.Object) {
 	s.log.Info("Start to spread")
-	key := obj.Key
+	key := *obj.Key
 	for _, w := range s.watchers {
-		if w.key.Match(key) {
+		if w.key.Match(&key) {
 			select {
 			case w.ch <- obj:
 			default:

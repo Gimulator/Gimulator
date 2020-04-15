@@ -1,4 +1,4 @@
-package auth
+package api
 
 import (
 	"encoding/json"
@@ -67,16 +67,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) (in
 		return http.StatusBadRequest, msg
 	}
 
-	return http.StatusAccepted, ""
-}
-
-func getCookie(r *http.Request) (string, int, string) {
-	cookie, err := r.Cookie("token")
-	if err != nil {
-		return "", http.StatusUnauthorized, "Invalid token"
-	}
-
-	return cookie.Value, http.StatusAccepted, ""
+	return http.StatusOK, ""
 }
 
 func newCookie() (string, int) {
@@ -84,5 +75,5 @@ func newCookie() (string, int) {
 	if err != nil {
 		return "", http.StatusInternalServerError
 	}
-	return uuid.String(), http.StatusAccepted
+	return uuid.String(), http.StatusOK
 }
