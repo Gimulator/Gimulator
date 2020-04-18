@@ -90,7 +90,6 @@ func (a *Auth) loadConfigs() error {
 		return err
 	}
 
-	fmt.Println(a.Roles)
 	return nil
 }
 

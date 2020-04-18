@@ -1,0 +1,14 @@
+roles:
+  role1:
+    password: "pass"
+    types:
+      type1:
+        key:
+          name: "name"
+          namespace: "namespace"
+          type: "type1"
+        methods:
+          - "get"
+          - "set"
+          - "find"
+          - "watch"
