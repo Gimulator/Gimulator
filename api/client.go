@@ -5,7 +5,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-	"gitlab.com/Syfract/Xerac/gimulator/object"
+	"github.com/Gimulator/Gimulator/object"
 )
 
 const (

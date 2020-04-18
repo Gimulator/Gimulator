@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/sirupsen/logrus"
-	"gitlab.com/Syfract/Xerac/gimulator/object"
-	"gitlab.com/Syfract/Xerac/gimulator/storage"
+	"github.com/Gimulator/Gimulator/object"
+	"github.com/Gimulator/Gimulator/storage"
 )
 
 type Simulator struct {

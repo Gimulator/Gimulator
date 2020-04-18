@@ -9,9 +9,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-	"gitlab.com/Syfract/Xerac/gimulator/auth"
-	"gitlab.com/Syfract/Xerac/gimulator/object"
-	"gitlab.com/Syfract/Xerac/gimulator/simulator"
+	"github.com/Gimulator/Gimulator/auth"
+	"github.com/Gimulator/Gimulator/object"
+	"github.com/Gimulator/Gimulator/simulator"
 )
 
 const (

@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/Gimulator/Gimulator/object"
 	"github.com/sirupsen/logrus"
-	"gitlab.com/Syfract/Xerac/gimulator/object"
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,8 +22,8 @@ const (
 )
 
 type Type struct {
-	Key     object.Key `json:"key"`
-	Methods []Method   `json:"methods"`
+	Key     object.Key
+	Methods []Method
 }
 
 func (t *Type) match(key *object.Key, method Method) bool {
@@ -39,14 +39,14 @@ func (t *Type) match(key *object.Key, method Method) bool {
 }
 
 type Role struct {
-	Password string          `json:"password"`
-	Types    map[string]Type `json:"types"`
+	Password string          //`yaml:"password"`
+	Types    map[string]Type //`yaml:"types"`
 }
 
 type Auth struct {
 	sync.Mutex
 	path  string
-	Roles map[string]Role `json:"roles"`
+	Roles map[string]Role //`yaml:"roles"`
 	log   *logrus.Entry
 }
 
@@ -85,10 +85,12 @@ func (a *Auth) loadConfigs() error {
 		return err
 	}
 
-	if err := yaml.NewDecoder(file).Decode(&a.Roles); err != nil {
+	if err := yaml.NewDecoder(file).Decode(&a); err != nil {
 		a.log.WithError(err).Error("Can not decode config file")
 		return err
 	}
+
+	fmt.Println(a.Roles)
 	return nil
 }
 

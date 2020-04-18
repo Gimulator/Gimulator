@@ -1,6 +1,6 @@
 package storage
 
-import "gitlab.com/Syfract/Xerac/gimulator/object"
+import "github.com/Gimulator/Gimulator/object"
 
 type Storage interface {
 	Set(*object.Object) error

@@ -2,7 +2,7 @@ package simulator
 
 import (
 	"github.com/sirupsen/logrus"
-	"gitlab.com/Syfract/Xerac/gimulator/object"
+	"github.com/Gimulator/Gimulator/object"
 )
 
 type watcher struct {

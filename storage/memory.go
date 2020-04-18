@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"gitlab.com/Syfract/Xerac/gimulator/object"
+	"github.com/Gimulator/Gimulator/object"
 )
 
 type Memory struct {
