@@ -71,9 +71,6 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) (in
 }
 
 func newCookie() (string, int) {
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		return "", http.StatusInternalServerError
-	}
+	uuid := uuid.NewV4()
 	return uuid.String(), http.StatusOK
 }
