@@ -8,7 +8,6 @@ import (
 
 	"github.com/Gimulator/Gimulator/object"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 type Method string
@@ -21,32 +20,32 @@ const (
 	Watch  Method = "watch"
 )
 
-type Type struct {
-	Key     object.Key
-	Methods []Method
+type rule struct {
+	key     object.Key
+	methods map[Method]bool
 }
 
-func (t *Type) match(key *object.Key, method Method) bool {
-	if !t.Key.Match(key) {
+func (r *rule) match(key *object.Key, method Method) bool {
+	if !r.key.Match(key) {
 		return false
 	}
-	for _, m := range t.Methods {
-		if m == method {
-			return true
-		}
+
+	if _, exists := r.methods[method]; exists {
+		return true
 	}
 	return false
 }
 
-type Role struct {
-	Password string          //`yaml:"password"`
-	Types    map[string]Type //`yaml:"types"`
+type role struct {
+	role     string
+	password string          //`yaml:"password"`
+	rules    map[string]rule //`yaml:"types"`
 }
 
 type Auth struct {
 	sync.Mutex
 	path  string
-	Roles map[string]Role //`yaml:"roles"`
+	roles map[string]role //`yaml:"roles"`
 	log   *logrus.Entry
 }
 
@@ -57,13 +56,13 @@ func NewAuth(path string) (*Auth, error) {
 	}
 
 	if fileInfo.IsDir() {
-		return nil, fmt.Errorf("path must be a path to file not directory")
+		return nil, fmt.Errorf("path must be a address of file not directory")
 	}
 
 	a := Auth{
 		Mutex: sync.Mutex{},
 		path:  path,
-		Roles: make(map[string]Role),
+		roles: make(map[string]role),
 		log:   logrus.WithField("Entity", "auth"),
 	}
 
@@ -79,17 +78,10 @@ func (a *Auth) loadConfigs() error {
 	a.Lock()
 	a.Unlock()
 
-	file, err := os.Open(a.path)
-	if err != nil {
-		a.log.WithError(err).Error("Can not open config file")
+	if err := readConfig(a.path, &a.roles); err != nil {
+		a.log.WithError(err).Error("Can not read config file")
 		return err
 	}
-
-	if err := yaml.NewDecoder(file).Decode(&a); err != nil {
-		a.log.WithError(err).Error("Can not decode config file")
-		return err
-	}
-
 	return nil
 }
 
@@ -100,7 +92,7 @@ func (a *Auth) Authenticate(roleName, password string) (int, string) {
 	if status != http.StatusOK {
 		return status, msg
 	}
-	if role.Password != password {
+	if role.password != password {
 		return http.StatusUnauthorized, fmt.Sprintf("Credential is not valid")
 	}
 
@@ -109,19 +101,19 @@ func (a *Auth) Authenticate(roleName, password string) (int, string) {
 
 func (a *Auth) Authorize(role string, method Method, key *object.Key) (int, string) {
 	a.log.Info("Start to authorize")
-	if actualRole, exists := a.Roles[role]; exists {
-		if actualType, exists := actualRole.Types[key.Type]; exists && actualType.match(key, method) {
+	if actualRole, exists := a.roles[role]; exists {
+		if actualType, exists := actualRole.rules[key.Type]; exists && actualType.match(key, method) {
 			return http.StatusOK, ""
 		}
-		return http.StatusUnauthorized, fmt.Sprintf("you don't have access on '%v', with method '%s' and role %s", key, method, role)
+		return http.StatusUnauthorized, fmt.Sprintf("you don't have access on '%v', with method '%s' and role '%s'", *key, method, role)
 	}
 	return http.StatusNotFound, fmt.Sprintf("role '%s' does not exists", role)
 }
 
-func (a *Auth) getRole(role string) (Role, int, string) {
+func (a *Auth) getRole(r string) (role, int, string) {
 	a.log.Info("Start to get role")
-	if r, ex := a.Roles[role]; ex {
+	if r, ex := a.roles[r]; ex {
 		return r, http.StatusOK, ""
 	}
-	return Role{}, http.StatusNotFound, fmt.Sprintf("Role %s does not exist", role)
+	return role{}, http.StatusNotFound, fmt.Sprintf("Role %s does not exist", r)
 }

@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 	"github.com/Gimulator/Gimulator/auth"
 	"github.com/Gimulator/Gimulator/object"
 	"github.com/Gimulator/Gimulator/simulator"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -83,7 +83,7 @@ func (m *Manager) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
 	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -119,9 +119,9 @@ func (m *Manager) handleFind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Find, obj.Key)
 	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -158,9 +158,9 @@ func (m *Manager) handleSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Set, obj.Key)
 	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -191,9 +191,9 @@ func (m *Manager) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Delete, obj.Key)
 	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
 		return
 	}
@@ -224,9 +224,9 @@ func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.cred.Role, auth.Get, obj.Key)
+	status, msg = m.auth.Authorize(cli.cred.Role, auth.Watch, obj.Key)
 	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorize action")
+		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
 		return
 	}

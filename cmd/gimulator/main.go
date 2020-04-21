@@ -2,12 +2,33 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
+	"path"
+	"runtime"
 
 	"github.com/Gimulator/Gimulator/api"
 	"github.com/Gimulator/Gimulator/auth"
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/Gimulator/Gimulator/storage"
+	"github.com/sirupsen/logrus"
 )
+
+func init() {
+	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetOutput(os.Stdout)
+
+	logrus.SetReportCaller(true)
+	formatter := &logrus.TextFormatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+		FullTimestamp:   true,
+
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			return "", fmt.Sprintf("%-20s", fmt.Sprintf(" %s:%d", path.Base(f.File), f.Line))
+		},
+	}
+	logrus.SetFormatter(formatter)
+}
 
 func main() {
 	ip := flag.String("ip", "localhost:3030", "ip is for listening and serving")

@@ -1,14 +1,47 @@
 roles:
-  role1:
-    password: "pass"
-    types:
-      type1:
-        key:
-          name: "name"
-          namespace: "namespace"
-          type: "type1"
+  - role: "agent"
+    password: "pass-agent"
+    rules:
+      - type: "action"
+        name: "action-name"
+        namespace: "default"
+        methods:
+          - "set"
+          - "delete"
+      - type: world
+        name: "world-name"
+        namespace: "default"
+        methods:
+          - "get"
+          - "find"
+          - "watch"
+  - role: "judge"
+    password: "pass-judge"
+    rules:
+      - type: "action"
+        name: "action-name"
+        namespace: ""
+        methods:
+          - "get"
+          - "watch"
+      - type: "world"
+        name: "world-name"
+        namespace: ""
         methods:
           - "get"
           - "set"
           - "find"
           - "watch"
+          - "delete"
+  - role: "logger"
+    password: "pass-logger"
+    rules:
+      - type: ""
+        name: ""
+        namespace: ""
+        methods:
+          - "get"
+          - "set"
+          - "find"
+          - "watch"
+          - "delete"
