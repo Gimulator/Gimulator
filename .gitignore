@@ -51,3 +51,4 @@
 # Ignore all local history of files
 .history
 
+/bin
