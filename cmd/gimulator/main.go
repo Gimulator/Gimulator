@@ -14,17 +14,31 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func sort(str []string) {
+	str[0] = "time"
+	str[1] = "level"
+	str[2] = "file"
+	str[3] = "msg"
+}
+
 func init() {
 	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetOutput(os.Stdout)
+
+	file, err := os.Create("log.txt")
+	if err != nil {
+		logrus.SetOutput(os.Stderr)
+	}
+	logrus.SetOutput(file)
 
 	logrus.SetReportCaller(true)
 	formatter := &logrus.TextFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 		FullTimestamp:   true,
+		DisableSorting:  false,
+		SortingFunc:     sort,
 
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-			return "", fmt.Sprintf("%-20s", fmt.Sprintf(" %s:%d", path.Base(f.File), f.Line))
+			return "", fmt.Sprintf("%s:%d", path.Base(f.File), f.Line)
 		},
 	}
 	logrus.SetFormatter(formatter)
@@ -44,7 +58,8 @@ func main() {
 	simulator := simulator.NewSimulator(storage)
 	auth, err := auth.NewAuth(*configFile)
 	if err != nil {
-		panic(err.Error())
+		fmt.Println(err)
+		return
 	}
 
 	api := api.NewManager(simulator, auth)
