@@ -1,31 +1,40 @@
-This project is still under development.
-
 # Gimulator
 
-The main idea of this project is holding AI competitions where one or more agents want to communicate with the environment or other agents. Gimulator is a Key-Value store with **Watch**, **Get**, **Set**, **Delete**, and **Find** functionality, Also it can Authenticates and Authorizes incoming requests. It is at the center of any system and is responsible for transmitting and storing messages. Every message has a unique key and some value. Value can contain any type of data like JSON, Yaml, or string.
+:warning: **_This project is still under development._**
 
-# Getting Started
+The main purpose of this project is to hold AI competitions where one or more agents need to communicate with the environment or other agents. Gimulator is a Key-Value store with an API consisting of **Watch**, **Get**, **Set**, **Delete**, and **Find** endpoints to work with. It can also authenticate and authorize incoming requests. It is responsible for transmitting and storing messages. Every message has a unique key and a value. Value can contain any type of data like JSON, Yaml, or string.
 
-You can get the project using this command:
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Description](#description)
+  - [Object](#object)
+  - [Operations](#operations)
+  - [Components](#components)
+- [Contributing](#contributing)
+
+## Getting Started
+
+Get the project using this command:
 
 ```bash
 $ go get github.com/Gimulator/Gimulator
 ```
 
-After that, Start the project using these commands:
+Then, start it using these commands:
 
 ```bash
-$ cd $GOPATH/src/github.com/Gimulator/Gimulator/example
-$ go run main.go ./roles.yaml
+$ cd $GOPATH/src/github.com/Gimulator/Gimulator
+$ go run cmd/Gimulator/main.go ./example/roles.yaml
 ```
 
-Now Gimulator listens and serves on `http://localhost:5000/`
+Gimulator is up and running! You can access the API on [http://localhost:5000](http://localhost:5000).
 
-# Description
+## Description
 
 In this section, Gimulator is briefly described.
 
-## Object
+### Object
 
 Object is the core entity of Gimulator. Object has this structure:
 
@@ -35,29 +44,29 @@ object:
         type        string
         name        string
         namespace   string
-    value           interface{} #It means any type of data, like JSON or Yaml.
+    value           interface{} # It means any type of data, like JSON or Yaml.
 ```
 
-Key is the identifier of objects. Gimulator can find objects based on keys, It just filters all keys to find the key which is requested. You can define your language using keys and the different components of your system can speak to each other with this language, through connecting to Gimulator. 
+Key is the identifier of objects. Gimulator can find objects based on keys. It just filters all keys to find the key which is requested. You can define your language using keys and the different components of your system can speak to each other with this language, through connecting to Gimulator.
 
-## Operations
+### Operations
 
- Gimulator supports five operations:
+Gimulator supports five operations:
 
  1. Get: To get an object with a specific key.
  2. Set: To set an object with a specific key.
- 3. Find: To get a list of objects which match with a specific key.
+ 3. Find: To get a list of objects which match with a partial key.
  4. Delete: To delete an object with a specific key.
- 5. Watch: For setting a new watcher for a specific key to be aware of changes of that object.
+ 5. Watch: To set a new watcher for a specific key to be notified of changes of the objects filtered by that key.
 
-## Components
+### Components
 
 Gimulator contains four main packages:
 
-1. storage: This package has to store all incoming objects. it already saves objects in a map data structure in RAM.
+1. storage: This package stores all incoming objects. It currently saves objects in a map data structure in memory.
 2. simulator: It is a middleware package between **storage** and **api** packages. This package has to transmit incoming requests from api to storage package, and if there is a set operation on an object, it should push the new object to the clients who watch on this object.
-3. auth: This package has to authenticate new clients and authorize every request from clients based on a config file.
-4. api: This package handles incoming HTTP requests. Every request's method is "POST". List of endpoints:
+3. auth: This package authenticates new clients and authorizes every request from clients based on a config file.
+4. api: This package handles incoming HTTP requests. All the endpoint's method are "POST". List of endpoints:
 
     * `/get`
     * `/set`
@@ -67,9 +76,9 @@ Gimulator contains four main packages:
     * `/register`
     * `/socket`
 
-At first, you should send a "POST" request with credentials in its body to the `/register` endpoint. the api package takes this request and checks the credentials with the auth package, and if auth returns OK, api send you a token and you should save the token for sending future requests.
-The `/socket` endpoint opens a web-socket connection to send any changes you want to watch.
+At first, you should send a "POST" request with credentials in its body to the `/register` endpoint. the api package takes this request and checks the credentials with the auth package, and if auth returns OK, API returns a token and you should save the token for sending future requests.
+The `/socket` endpoint opens a Websocket connection to send any changes you want to watch.
 
-# Contribute
+## Contributing
 
 We've set up a separate document for our [contribution guidelines](https://github.com/Gimulator/Gimulator/blob/readme/CONTRIBUTING.md).
