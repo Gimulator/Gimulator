@@ -1,8 +1,8 @@
 package simulator
 
 import (
-	"github.com/sirupsen/logrus"
 	"github.com/Gimulator/Gimulator/object"
+	"github.com/sirupsen/logrus"
 )
 
 type watcher struct {

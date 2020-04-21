@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/sirupsen/logrus"
 	"github.com/Gimulator/Gimulator/object"
 	"github.com/Gimulator/Gimulator/storage"
+	"github.com/sirupsen/logrus"
 )
 
 type Simulator struct {

@@ -3,9 +3,9 @@ package api
 import (
 	"time"
 
+	"github.com/Gimulator/Gimulator/object"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-	"github.com/Gimulator/Gimulator/object"
 )
 
 const (
