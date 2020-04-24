@@ -15,20 +15,28 @@ The main purpose of this project is to hold AI competitions where one or more ag
 
 ## Getting Started
 
-Get the project using this command:
+### 1. Get the project using this command:
 
 ```bash
 $ go get github.com/Gimulator/Gimulator
 ```
-
-Then, start it using these commands:
-
-```bash
-$ cd $GOPATH/src/github.com/Gimulator/Gimulator
-$ go run cmd/Gimulator/main.go ./example/roles.yaml
+or you can get it with git command:
+```
+$ git clone https://github.com/Gimulator/Gimulator.git
 ```
 
-Gimulator is up and running! You can access the API on [http://localhost:5000](http://localhost:5000).
+### 2. Then, start it using these commands:
+
+```bash
+$ make build
+$ make exec ip="localhost:{port}" config-file="{/path/to/roles-file.yaml}"
+```
+or you can run it directly with this command:
+```
+$ make run ip="localhost:{port}" config-file="{/path/to/roles-file.yaml}"
+```
+
+Gimulator is up and running! You can access the API on `localhost:{port}`.
 
 ## Description
 
