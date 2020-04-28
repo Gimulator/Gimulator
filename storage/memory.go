@@ -55,7 +55,7 @@ func (m *Memory) del(key *object.Key) error {
 func (m *Memory) find(key *object.Key) []*object.Object {
 	result := make([]*object.Object, 0)
 	for k, o := range m.storage {
-		if k.Match(key) {
+		if key.Match(&k) {
 			result = append(result, o)
 		}
 	}

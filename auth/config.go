@@ -15,48 +15,60 @@ type Rule struct {
 }
 
 type Role struct {
-	Role     string `yaml:"role"`
+	Role  string `yaml:"role"`
+	Rules []Rule `yaml:"rules"`
+}
+
+type Actor struct {
+	Username string `yaml:"username"`
 	Password string `yaml:"password"`
-	Rules    []Rule `yaml:"rules"`
+	Role     string `yaml:"role"`
 }
 
 type Config struct {
-	Roles []Role `yaml:"roles"`
+	Roles  []Role  `yaml:"roles"`
+	Actors []Actor `yaml:"actors"`
 }
 
-func readConfig(path string, dst *map[string]role) error {
+func loadConfig(path string) (map[string]actor, map[string]role, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer file.Close()
 
 	var config Config
 	if err := yaml.NewDecoder(file).Decode(&config); err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	*dst = loadRoles(config.Roles)
-	return nil
+	roles := loadRoles(config.Roles)
+	actors := loadActors(config.Actors)
+	return actors, roles, nil
 }
 
-func loadRoles(src []Role) map[string]role {
-	dst := make(map[string]role)
-	for _, Role := range src {
-		dst[Role.Role] = loadRole(Role)
+func loadRoles(cRoles []Role) map[string]role {
+	aRoles := make(map[string]role)
+	for _, cRole := range cRoles {
+		aRoles[cRole.Role] = loadRole(cRole)
 	}
-	return dst
+	return aRoles
 }
 
-func loadRole(src Role) role {
-	dst := role{}
-	dst.password = src.Password
-
-	dst.rules = make(map[string]rule)
-	for _, rule := range src.Rules {
-		dst.rules[rule.Type] = loadRule(rule)
+func loadRole(cRole Role) role {
+	aRole := role{
+		rules: loadRules(cRole.Rules),
 	}
-	return dst
+	return aRole
+}
+
+func loadRules(cRules []Rule) map[string]rule {
+	aRules := make(map[string]rule)
+	for _, cRule := range cRules {
+		aRules[cRule.Type] = loadRule(cRule)
+	}
+
+	return aRules
 }
 
 func loadRule(src Rule) rule {
@@ -73,4 +85,21 @@ func loadRule(src Rule) rule {
 	}
 
 	return dst
+}
+
+func loadActors(cActors []Actor) map[string]actor {
+	aActor := make(map[string]actor)
+	for _, cActor := range cActors {
+		aActor[cActor.Username] = loadActor(cActor)
+	}
+	return aActor
+
+}
+
+func loadActor(cActor Actor) actor {
+	return actor{
+		username: cActor.Username,
+		password: cActor.Password,
+		role:     cActor.Role,
+	}
 }
