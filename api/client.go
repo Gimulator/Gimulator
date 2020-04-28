@@ -16,25 +16,19 @@ const (
 	pingPeriod = time.Second * 3
 )
 
-type Credential struct {
-	Username string
-	Password string
-	Role     string
-}
-
 type client struct {
-	cred  *Credential
-	ch    chan *object.Object
-	token string
-	log   *logrus.Entry
+	username string
+	ch       chan *object.Object
+	token    string
+	log      *logrus.Entry
 }
 
-func NewClient(cred *Credential, token string) *client {
+func NewClient(username string, token string) *client {
 	return &client{
-		cred:  cred,
-		token: token,
-		ch:    make(chan *object.Object),
-		log:   logrus.WithField("Entity", "client"),
+		username: username,
+		token:    token,
+		ch:       make(chan *object.Object),
+		log:      logrus.WithField("Entity", "client"),
 	}
 }
 

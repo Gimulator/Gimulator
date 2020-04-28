@@ -1,6 +1,5 @@
 roles:
   - role: "agent"
-    password: "pass-agent"
     rules:
       - type: "action"
         name: "action-name"
@@ -16,7 +15,6 @@ roles:
           - "find"
           - "watch"
   - role: "judge"
-    password: "pass-judge"
     rules:
       - type: "action"
         name: "action-name"
@@ -34,7 +32,6 @@ roles:
           - "watch"
           - "delete"
   - role: "logger"
-    password: "pass-logger"
     rules:
       - type: ""
         name: ""
@@ -45,3 +42,13 @@ roles:
           - "find"
           - "watch"
           - "delete"
+actors:
+  - username: "agent-actor"
+    password: "agent-pass"
+    role: "agent"
+  - username: "judge-actor"
+    password: "judge-pass"
+    role: "judge"
+  - username: "logger-actor"
+    password: "logger-pass"
+    role: "logger"
