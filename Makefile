@@ -1,8 +1,10 @@
 -include .env
 
-#COMMIT := $(shell git rev-parse --short HEAD)
-#VERSION := $(shell git describe --tags ${COMMIT})
+COMMIT := $(shell git rev-parse --short HEAD)
+VERSION := $(shell git describe --tags ${COMMIT})
 PROJECTNAME := $(shell basename "$(PWD)")
+IMG ?= xerac/gimulator-docker:${VERSION}
+
 
 # Go related variables.
 GOBASE := $(shell pwd)
@@ -31,6 +33,7 @@ get: dep
 	go get -u ./...
 
 test: build clean
+	@echo ">>>  Testing..."
 	go test ./...
 
 clean:
@@ -50,3 +53,11 @@ run:
 exec: build
 	@echo ">>>  Executing binary..."
 	@$(BINDIR)/$(PROJECTNAME) -ip=$(ip) -config-file=$(config-file)
+
+docker-build: build
+	@echo ">>>  Building docker image..."
+	docker build --no-cache -t $(IMG) .
+
+docker-push: docker-build
+	@echo ">>>  Pushing docker image..."
+	docker push $(IMG)
