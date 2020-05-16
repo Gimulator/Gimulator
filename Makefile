@@ -48,11 +48,11 @@ build: get
 
 run:
 	@echo ">>>  Running..."
-	go run $(GOMAIN) -ip=$(ip) -config-file=$(config-file)
+	go run $(GOMAIN) -host=$(host) -config-file=$(config-file)
 
 exec: build
 	@echo ">>>  Executing binary..."
-	@$(BINDIR)/$(PROJECTNAME) -ip=$(ip) -config-file=$(config-file)
+	@$(BINDIR)/$(PROJECTNAME) -host=$(host) -config-file=$(config-file)
 
 docker-build: build
 	@echo ">>>  Building docker image..."

@@ -45,7 +45,7 @@ func init() {
 }
 
 func main() {
-	ip := flag.String("ip", "localhost:3030", "ip is for listening and serving")
+	host := flag.String("host", "localhost:3030", "host is for listening and serving")
 	configFile := flag.String("config-file", "", "this is a config file for auth")
 	flag.Parse()
 
@@ -63,5 +63,5 @@ func main() {
 	}
 
 	api := api.NewManager(simulator, auth)
-	api.ListenAndServe(*ip)
+	api.ListenAndServe(*host)
 }
