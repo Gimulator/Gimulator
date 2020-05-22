@@ -31,4 +31,5 @@ func (k *Key) Match(key *Key) bool {
 type Object struct {
 	Key   *Key
 	Value interface{}
+	Owner string
 }

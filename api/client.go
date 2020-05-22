@@ -17,18 +17,18 @@ const (
 )
 
 type client struct {
-	username string
-	ch       chan *object.Object
-	token    string
-	log      *logrus.Entry
+	id    string
+	ch    chan *object.Object
+	token string
+	log   *logrus.Entry
 }
 
-func NewClient(username string, token string) *client {
+func NewClient(id string, token string) *client {
 	return &client{
-		username: username,
-		token:    token,
-		ch:       make(chan *object.Object),
-		log:      logrus.WithField("Entity", "client"),
+		id:    id,
+		token: token,
+		ch:    make(chan *object.Object),
+		log:   logrus.WithField("Entity", "client"),
 	}
 }
 

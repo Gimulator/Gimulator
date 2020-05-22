@@ -81,7 +81,7 @@ func (m *Manager) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.username, auth.Get, obj.Key)
+	status, msg = m.auth.Auth(cli.id, auth.Get, obj)
 	if status != http.StatusOK {
 		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
@@ -119,7 +119,7 @@ func (m *Manager) handleFind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.username, auth.Find, obj.Key)
+	status, msg = m.auth.Auth(cli.id, auth.Find, obj)
 	if status != http.StatusOK {
 		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
@@ -158,7 +158,7 @@ func (m *Manager) handleSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.username, auth.Set, obj.Key)
+	status, msg = m.auth.Auth(cli.id, auth.Set, obj)
 	if status != http.StatusOK {
 		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
@@ -191,7 +191,7 @@ func (m *Manager) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.username, auth.Delete, obj.Key)
+	status, msg = m.auth.Auth(cli.id, auth.Delete, obj)
 	if status != http.StatusOK {
 		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
@@ -224,7 +224,7 @@ func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg = m.auth.Authorize(cli.username, auth.Watch, obj.Key)
+	status, msg = m.auth.Auth(cli.id, auth.Watch, obj)
 	if status != http.StatusOK {
 		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
 		http.Error(w, msg, status)
@@ -244,8 +244,7 @@ func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
 	log.Info("Start to handle request")
 
 	cred := struct {
-		Username string
-		Password string
+		ID string
 	}{}
 	if status, msg := decodeJSONBody(w, r, &cred); status != http.StatusOK {
 		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
@@ -253,15 +252,15 @@ func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if status, msg := m.auth.Authenticate(cred.Username, cred.Password); status != http.StatusOK {
+	if status, msg := m.auth.Register(cred.ID); status != http.StatusOK {
 		log.WithField("status", status).WithField("message", msg).Debug("Fail to authenticate")
 		http.Error(w, msg, status)
 		return
 	}
 
-	cli, status, msg := m.getClientWithUsername(cred.Username)
+	cli, status, msg := m.getClientWithID(cred.ID)
 	if status != http.StatusOK {
-		if cli, status, msg = m.registerNewClient(cred.Username); status != http.StatusOK {
+		if cli, status, msg = m.registerNewClient(cred.ID); status != http.StatusOK {
 			http.Error(w, msg, status)
 			return
 		}
@@ -325,16 +324,16 @@ func (m *Manager) getClientWithToken(token string) (*client, int, string) {
 	return nil, http.StatusNotFound, "There is no client with the specified cookie"
 }
 
-func (m *Manager) getClientWithUsername(username string) (*client, int, string) {
+func (m *Manager) getClientWithID(id string) (*client, int, string) {
 	for _, c := range m.clients {
-		if c.username == username {
+		if c.id == id {
 			return c, http.StatusOK, ""
 		}
 	}
 	return nil, http.StatusNotFound, "User not found"
 }
 
-func (m *Manager) registerNewClient(username string) (*client, int, string) {
+func (m *Manager) registerNewClient(id string) (*client, int, string) {
 	m.Lock()
 	defer m.Unlock()
 	m.log.Info("Start to create a new client")
@@ -344,7 +343,7 @@ func (m *Manager) registerNewClient(username string) (*client, int, string) {
 		return nil, status, "Can not generate new cookie"
 	}
 
-	client := NewClient(username, token)
+	client := NewClient(id, token)
 	m.clients[token] = client
 
 	return client, http.StatusOK, ""

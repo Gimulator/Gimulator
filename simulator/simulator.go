@@ -28,7 +28,7 @@ func NewSimulator(strg storage.Storage) *Simulator {
 func (s *Simulator) Get(key *object.Key) (*object.Object, error) {
 	s.log.Info("Start to handle get")
 	s.Lock()
-	s.Unlock()
+	defer s.Unlock()
 
 	return s.storage.Get(key)
 }
@@ -36,7 +36,7 @@ func (s *Simulator) Get(key *object.Key) (*object.Object, error) {
 func (s *Simulator) Set(obj *object.Object) error {
 	s.log.Info("Start to handle set")
 	s.Lock()
-	s.Unlock()
+	defer s.Unlock()
 
 	err := s.storage.Set(obj)
 	if err != nil {
@@ -49,7 +49,7 @@ func (s *Simulator) Set(obj *object.Object) error {
 func (s *Simulator) Delete(key *object.Key) error {
 	s.log.Info("Start to handle delete")
 	s.Lock()
-	s.Unlock()
+	defer s.Unlock()
 
 	return s.storage.Delete(key)
 }
@@ -57,7 +57,7 @@ func (s *Simulator) Delete(key *object.Key) error {
 func (s *Simulator) Find(key *object.Key) ([]*object.Object, error) {
 	s.log.Info("Start to handle find")
 	s.Lock()
-	s.Unlock()
+	defer s.Unlock()
 
 	return s.storage.Find(key)
 }
@@ -65,7 +65,7 @@ func (s *Simulator) Find(key *object.Key) ([]*object.Object, error) {
 func (s *Simulator) Watch(key *object.Key, ch chan *object.Object) error {
 	s.log.Info("Start to handle watch")
 	s.Lock()
-	s.Unlock()
+	defer s.Unlock()
 
 	if ch == nil {
 		s.log.Error("nil channel for watch command")

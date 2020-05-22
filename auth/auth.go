@@ -37,20 +37,20 @@ func (r *rule) match(key *object.Key, method Method) bool {
 }
 
 type actor struct {
-	username string
-	password string
-	role     string
+	id           string
+	role         string
+	isRegistered bool
 }
 
 type role struct {
-	rules map[string]rule
+	rules map[string]*rule
 }
 
 type Auth struct {
 	sync.Mutex
 	path   string
-	roles  map[string]role  // string is the name of Role
-	actors map[string]actor // string is the username of actor
+	roles  map[string]*role  // string is the name of Role
+	actors map[string]*actor // string is the id of actor
 	log    *logrus.Entry
 }
 
@@ -67,8 +67,8 @@ func NewAuth(path string) (*Auth, error) {
 	a := Auth{
 		Mutex:  sync.Mutex{},
 		path:   path,
-		roles:  make(map[string]role),
-		actors: make(map[string]actor),
+		roles:  make(map[string]*role),
+		actors: make(map[string]*actor),
 		log:    logrus.WithField("Entity", "auth"),
 	}
 
@@ -94,50 +94,42 @@ func (a *Auth) loadConfigs() error {
 	return nil
 }
 
-func (a *Auth) Authenticate(username, password string) (int, string) {
-	a.log.Info("Start to Authenticate credential")
+func (a *Auth) Register(id string) (int, string) {
+	a.log.Info("Start to register new credential")
 
-	actor, status, msg := a.getActor(username)
-	if status != http.StatusOK {
-		return status, msg
+	actor, ex := a.actors[id]
+	if !ex {
+		return http.StatusNotFound, fmt.Sprintf("actor with id=%s does not exist", id)
 	}
-	if actor.password != password {
-		return http.StatusUnauthorized, fmt.Sprintf("Credential is not valid")
-	}
+	actor.isRegistered = true
 
 	return http.StatusOK, ""
 }
 
-func (a *Auth) Authorize(name string, method Method, key *object.Key) (int, string) {
-	a.log.Info("Start to authorize")
-	actor, status, msg := a.getActor(name)
-	if status != http.StatusOK {
-		return http.StatusNotFound, msg
+func (a *Auth) Auth(id string, method Method, obj *object.Object) (int, string) {
+	a.log.Info("Start to auth")
+
+	actor, exists := a.actors[id]
+	if !exists {
+		return http.StatusNotFound, fmt.Sprintf("actor with id=%s does not exist", id)
 	}
 
-	role, status, msg := a.getRole(actor.role)
-	if status != http.StatusOK {
-		return status, fmt.Sprintf("role '%s' does not exists", actor.role)
+	if !actor.isRegistered {
+		return http.StatusUnauthorized, fmt.Sprintf("you should first register")
 	}
 
-	if rule, exists := role.rules[key.Type]; exists && rule.match(key, method) {
-		return http.StatusOK, ""
+	if actor.id != obj.Owner {
+		return http.StatusUnauthorized, fmt.Sprintf("id does not match with name=%s", obj.Owner)
 	}
-	return http.StatusUnauthorized, fmt.Sprintf("you don't have access on '%v', with method '%s' and role '%s'", *key, method, actor.role)
-}
 
-func (a *Auth) getActor(name string) (actor, int, string) {
-	a.log.Info("Start to get actor")
-	if actor, ex := a.actors[name]; ex {
-		return actor, http.StatusOK, ""
+	role, exists := a.roles[actor.role]
+	if !exists {
+		return http.StatusNotFound, fmt.Sprintf("role '%s' does not exists", actor.role)
 	}
-	return actor{}, http.StatusNotFound, fmt.Sprintf("Actor %s does not exist", name)
-}
 
-func (a *Auth) getRole(name string) (role, int, string) {
-	a.log.Info("Start to get role")
-	if r, ex := a.roles[name]; ex {
-		return r, http.StatusOK, ""
+	if rule, exists := role.rules[obj.Key.Type]; !exists || !rule.match(obj.Key, method) {
+		return http.StatusUnauthorized, fmt.Sprintf("you don't have access on '%v', with method '%s' and role '%s'", *obj.Key, method, actor.role)
 	}
-	return role{}, http.StatusNotFound, fmt.Sprintf("Role %s does not exist", name)
+
+	return http.StatusOK, ""
 }

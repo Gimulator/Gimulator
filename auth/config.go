@@ -20,9 +20,8 @@ type Role struct {
 }
 
 type Actor struct {
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Role     string `yaml:"role"`
+	ID   string `yaml:"id"`
+	Role string `yaml:"role"`
 }
 
 type Config struct {
@@ -30,7 +29,7 @@ type Config struct {
 	Actors []Actor `yaml:"actors"`
 }
 
-func loadConfig(path string) (map[string]actor, map[string]role, error) {
+func loadConfig(path string) (map[string]*actor, map[string]*role, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, nil, err
@@ -47,23 +46,22 @@ func loadConfig(path string) (map[string]actor, map[string]role, error) {
 	return actors, roles, nil
 }
 
-func loadRoles(cRoles []Role) map[string]role {
-	aRoles := make(map[string]role)
+func loadRoles(cRoles []Role) map[string]*role {
+	aRoles := make(map[string]*role)
 	for _, cRole := range cRoles {
 		aRoles[cRole.Role] = loadRole(cRole)
 	}
 	return aRoles
 }
 
-func loadRole(cRole Role) role {
-	aRole := role{
+func loadRole(cRole Role) *role {
+	return &role{
 		rules: loadRules(cRole.Rules),
 	}
-	return aRole
 }
 
-func loadRules(cRules []Rule) map[string]rule {
-	aRules := make(map[string]rule)
+func loadRules(cRules []Rule) map[string]*rule {
+	aRules := make(map[string]*rule)
 	for _, cRule := range cRules {
 		aRules[cRule.Type] = loadRule(cRule)
 	}
@@ -71,8 +69,8 @@ func loadRules(cRules []Rule) map[string]rule {
 	return aRules
 }
 
-func loadRule(src Rule) rule {
-	dst := rule{}
+func loadRule(src Rule) *rule {
+	dst := &rule{}
 	dst.key = object.Key{
 		Name:      src.Name,
 		Namespace: src.Namespace,
@@ -87,19 +85,19 @@ func loadRule(src Rule) rule {
 	return dst
 }
 
-func loadActors(cActors []Actor) map[string]actor {
-	aActor := make(map[string]actor)
+func loadActors(cActors []Actor) map[string]*actor {
+	aActor := make(map[string]*actor)
 	for _, cActor := range cActors {
-		aActor[cActor.Username] = loadActor(cActor)
+		aActor[cActor.ID] = loadActor(cActor)
 	}
 	return aActor
 
 }
 
-func loadActor(cActor Actor) actor {
-	return actor{
-		username: cActor.Username,
-		password: cActor.Password,
-		role:     cActor.Role,
+func loadActor(cActor Actor) *actor {
+	return &actor{
+		id:           cActor.ID,
+		role:         cActor.Role,
+		isRegistered: false,
 	}
 }

@@ -41,7 +41,7 @@ clean:
 	-rm -r $(BINDIR) 2> /dev/null
 	go clean ./...
 
-build: get
+build:
 	@echo ">>>  Building binary..."
 	mkdir -p $(BINDIR) 2> /dev/null
 	go build $(LDFLAGS) -o $(BINDIR)/$(PROJECTNAME) $(GOMAIN)

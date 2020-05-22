@@ -2,13 +2,12 @@ roles:
   - role: "agent"
     rules:
       - type: "action"
-        name: "action-name"
         namespace: "default"
         methods:
           - "set"
           - "delete"
       - type: world
-        name: "world-name"
+        name: "judge"
         namespace: "default"
         methods:
           - "get"
@@ -17,14 +16,10 @@ roles:
   - role: "judge"
     rules:
       - type: "action"
-        name: "action-name"
-        namespace: ""
         methods:
           - "get"
           - "watch"
       - type: "world"
-        name: "world-name"
-        namespace: ""
         methods:
           - "get"
           - "set"
@@ -43,12 +38,9 @@ roles:
           - "watch"
           - "delete"
 actors:
-  - username: "agent-actor"
-    password: "agent-pass"
+  - id: "agent-123"
     role: "agent"
-  - username: "judge-actor"
-    password: "judge-pass"
+  - id: "judge-123"
     role: "judge"
-  - username: "logger-actor"
-    password: "logger-pass"
+  - id: "logger-123"
     role: "logger"
