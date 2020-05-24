@@ -2,7 +2,6 @@ package auth
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"sync"
 
@@ -55,12 +54,17 @@ type Auth struct {
 }
 
 func NewAuth(path string) (*Auth, error) {
+	log := logrus.WithField("entity", "auth")
+	log.Info("starting to create new auth")
+
 	fileInfo, err := os.Stat(path)
 	if err != nil {
+		log.WithError(err).Fatal("could not get stat of roles-file path")
 		return nil, err
 	}
 
 	if fileInfo.IsDir() {
+		log.Fatal("path is seted to a directory not file")
 		return nil, fmt.Errorf("path must be a address of file not directory")
 	}
 
@@ -69,10 +73,12 @@ func NewAuth(path string) (*Auth, error) {
 		path:   path,
 		roles:  make(map[string]*role),
 		actors: make(map[string]*actor),
-		log:    logrus.WithField("Entity", "auth"),
+		log:    log,
 	}
 
+	log.Info("starting to load configs")
 	if err := a.loadConfigs(); err != nil {
+		log.WithError(err).Error("could not load configs from roles file")
 		return nil, err
 	}
 
@@ -80,13 +86,11 @@ func NewAuth(path string) (*Auth, error) {
 }
 
 func (a *Auth) loadConfigs() error {
-	a.log.Info("Start to load config")
 	a.Lock()
 	a.Unlock()
 
 	actors, roles, err := loadConfig(a.path)
 	if err != nil {
-		a.log.WithError(err).Error("Can not read config file")
 		return err
 	}
 	a.actors = actors
@@ -94,42 +98,41 @@ func (a *Auth) loadConfigs() error {
 	return nil
 }
 
-func (a *Auth) Register(id string) (int, string) {
-	a.log.Info("Start to register new credential")
-
+func (a *Auth) Register(id string) error {
 	actor, ex := a.actors[id]
 	if !ex {
-		return http.StatusNotFound, fmt.Sprintf("actor with id=%s does not exist", id)
+		return fmt.Errorf("actor with id=%s does not exist", id)
 	}
 	actor.isRegistered = true
 
-	return http.StatusOK, ""
+	return nil
 }
 
-func (a *Auth) Auth(id string, method Method, obj *object.Object) (int, string) {
-	a.log.Info("Start to auth")
-
+func (a *Auth) Auth(id string, method Method, obj *object.Object) error {
 	actor, exists := a.actors[id]
 	if !exists {
-		return http.StatusNotFound, fmt.Sprintf("actor with id=%s does not exist", id)
+		return fmt.Errorf("actor with id=%s does not exist", id)
 	}
 
 	if !actor.isRegistered {
-		return http.StatusUnauthorized, fmt.Sprintf("you should first register")
+		return fmt.Errorf("actor with id=%s has not registerd", id)
 	}
 
 	if actor.id != obj.Owner {
-		return http.StatusUnauthorized, fmt.Sprintf("id does not match with name=%s", obj.Owner)
+		return fmt.Errorf("id does not match with object owner")
 	}
 
 	role, exists := a.roles[actor.role]
 	if !exists {
-		return http.StatusNotFound, fmt.Sprintf("role '%s' does not exists", actor.role)
+		// TODO: it's not a error from client: this should not be happend
+		a.log.WithField("actor", actor).Fatal("role is seted by the auth package but there is no role with specified actor.role")
+		return fmt.Errorf("role '%s' does not exists", actor.role)
 	}
 
 	if rule, exists := role.rules[obj.Key.Type]; !exists || !rule.match(obj.Key, method) {
-		return http.StatusUnauthorized, fmt.Sprintf("you don't have access on '%v', with method '%s' and role '%s'", *obj.Key, method, actor.role)
+		// TODO: is this Ok to return actor.role to the client???
+		return fmt.Errorf("access denied on key=%s, method=%s, role=%s", *obj.Key, method, actor.role)
 	}
 
-	return http.StatusOK, ""
+	return nil
 }

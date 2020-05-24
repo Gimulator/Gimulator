@@ -89,19 +89,16 @@ func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
 func (m *Manager) handleRequest(w http.ResponseWriter, r *http.Request, method auth.Method) {
 	log := m.log.WithField("method", method)
 
-	cli, status, msg := m.tokenToClient(r)
-	if status != http.StatusOK {
-		log.WithFields(logrus.Fields{
-			"status":  status,
-			"message": msg,
-		}).Error("could not validate token")
-		http.Error(w, msg, status)
+	cli, err := m.tokenToClient(r)
+	if err != nil {
+		log.WithError(err).Error("could not validate token")
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	log = log.WithField("client-id", cli.id)
 
 	var obj *object.Object
-	if msg = decodeJSONBody(w, r, &obj); msg != "" {
+	if msg := decodeJSONBody(w, r, &obj); msg != "" {
 		log.WithField("message", msg).Error("could not decode the body of request")
 		http.Error(w, msg, http.StatusBadRequest)
 		return
@@ -109,13 +106,9 @@ func (m *Manager) handleRequest(w http.ResponseWriter, r *http.Request, method a
 	log = log.WithField("asked-object", obj.String())
 	log.Debug("starting to handle request")
 
-	status, msg = m.auth.Auth(cli.id, method, obj)
-	if status != http.StatusOK {
-		log.WithFields(logrus.Fields{
-			"status":  status,
-			"message": msg,
-		}).Error("could not auth the request")
-		http.Error(w, msg, status)
+	if err := m.auth.Auth(cli.id, method, obj); err != nil {
+		log.WithError(err).Error("could not auth the request")
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -185,13 +178,9 @@ func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if status, msg := m.auth.Register(cred.ID); status != http.StatusOK {
-		log.WithFields(logrus.Fields{
-			"status":    status,
-			"message":   msg,
-			"client-id": cred.ID,
-		}).Error("could not auth the request")
-		http.Error(w, msg, status)
+	if err := m.auth.Register(cred.ID); err != nil {
+		log.WithField("client-id", cred.ID).WithError(err).Error("could not auth the request")
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -215,13 +204,10 @@ const (
 func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
 	log := m.log.WithField("method", "socket")
 
-	cli, status, msg := m.tokenToClient(r)
-	if status != http.StatusOK {
-		log.WithFields(logrus.Fields{
-			"status":  status,
-			"message": msg,
-		}).Error("could not validate token")
-		http.Error(w, msg, status)
+	cli, err := m.tokenToClient(r)
+	if err != nil {
+		log.WithError(err).Error("could not validate token")
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -239,21 +225,21 @@ func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
 
 const tokenKey = "token"
 
-func (m *Manager) tokenToClient(r *http.Request) (*client, int, string) {
+func (m *Manager) tokenToClient(r *http.Request) (*client, error) {
 	m.Lock()
 	defer m.Unlock()
 
 	cookie, err := r.Cookie(tokenKey)
 	if err != nil {
-		return nil, http.StatusUnauthorized, "invalid token type"
+		return nil, fmt.Errorf("invalid token type")
 	}
 	token := cookie.Value
 
 	cli, exists := m.clients[token]
 	if !exists {
-		return nil, http.StatusNotFound, "invalid token"
+		return nil, fmt.Errorf("invalid token")
 	}
-	return cli, http.StatusOK, ""
+	return cli, nil
 }
 
 func (m *Manager) getClientWithID(id string) *client {
