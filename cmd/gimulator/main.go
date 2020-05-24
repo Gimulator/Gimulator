@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -23,45 +22,42 @@ func sort(str []string) {
 
 func init() {
 	logrus.SetLevel(logrus.DebugLevel)
-
-	file, err := os.Create("log.txt")
-	if err != nil {
-		logrus.SetOutput(os.Stderr)
-	}
-	logrus.SetOutput(file)
-
 	logrus.SetReportCaller(true)
-	formatter := &logrus.TextFormatter{
-		TimestampFormat: "2006-01-02 15:04:05",
-		FullTimestamp:   true,
-		DisableSorting:  false,
-		SortingFunc:     sort,
 
+	formatter := &logrus.TextFormatter{
+		TimestampFormat:  "2006-01-02 15:04:05",
+		FullTimestamp:    true,
+		PadLevelText:     true,
+		QuoteEmptyFields: true,
+		ForceQuote:       false,
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-			return "", fmt.Sprintf("%s:%d", path.Base(f.File), f.Line)
+			return "", fmt.Sprintf(" %s:%d\t", path.Base(f.File), f.Line)
 		},
 	}
 	logrus.SetFormatter(formatter)
 }
 
 func main() {
-	host := flag.String("host", "localhost:3030", "host is for listening and serving")
-	configFile := flag.String("config-file", "", "this is a config file for auth")
-	flag.Parse()
+	host := os.Getenv("GIMULATOR_HOST")
+	if host == "" {
+		panic("set 'GIMULATOR_HOST' to listen and serve")
+	}
 
-	if *configFile == "" {
-		flag.PrintDefaults()
-		return
+	configPath := os.Getenv("GIMULATOR_ROLES_FILE_PATH")
+	if configPath == "" {
+		panic("set 'GIMULATOR_ROLES_FILE_PATH' to setup auth")
 	}
 
 	storage := storage.NewMemory()
 	simulator := simulator.NewSimulator(storage)
-	auth, err := auth.NewAuth(*configFile)
+	auth, err := auth.NewAuth(configPath)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	api := api.NewManager(simulator, auth)
-	api.ListenAndServe(*host)
+	if err := api.ListenAndServe(host); err != nil {
+		panic(err)
+	}
 }
