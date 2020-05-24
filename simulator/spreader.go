@@ -47,7 +47,7 @@ func (s *spreader) Spread(obj *object.Object) {
 			select {
 			case w.ch <- obj:
 			default:
-				s.log.Error("can not write to channel")
+				s.log.WithField("object", obj.String()).Error("can not write to channel")
 			}
 		}
 	}

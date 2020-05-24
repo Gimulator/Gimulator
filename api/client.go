@@ -14,6 +14,8 @@ const (
 
 	// Send pings to peer with this period.
 	pingPeriod = time.Second * 3
+
+	channelBufSize = 128
 )
 
 type client struct {
@@ -27,7 +29,7 @@ func NewClient(id string, token string) *client {
 	return &client{
 		id:    id,
 		token: token,
-		ch:    make(chan *object.Object),
+		ch:    make(chan *object.Object, channelBufSize),
 		log:   logrus.WithField("entity", "client"),
 	}
 }
