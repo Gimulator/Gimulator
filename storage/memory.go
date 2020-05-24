@@ -37,7 +37,7 @@ func (m *Memory) get(key *object.Key) (*object.Object, error) {
 	if object, exists := m.storage[*key]; exists {
 		return object, nil
 	}
-	return nil, fmt.Errorf("object with %v key does not exist", key)
+	return nil, fmt.Errorf("object with key=%v does not exist", key)
 }
 
 func (m *Memory) set(obj *object.Object) {
@@ -49,7 +49,7 @@ func (m *Memory) del(key *object.Key) error {
 		delete(m.storage, *key)
 		return nil
 	}
-	return fmt.Errorf("object with %v key does not exist", key)
+	return fmt.Errorf("object with key=%v does not exist", key)
 }
 
 func (m *Memory) find(key *object.Key) []*object.Object {
