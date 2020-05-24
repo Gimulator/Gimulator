@@ -34,7 +34,7 @@ func NewManager(sim *simulator.Simulator, auth *auth.Auth) *Manager {
 		Mutex:     sync.Mutex{},
 		simulator: sim,
 		auth:      auth,
-		log:       logrus.WithField("Entity", "http"),
+		log:       logrus.WithField("entity", "http"),
 		clients:   make(map[string]*client),
 	}
 	m.route()
@@ -43,15 +43,23 @@ func NewManager(sim *simulator.Simulator, auth *auth.Auth) *Manager {
 }
 
 func (m *Manager) ListenAndServe(bind string) error {
-	m.log.Info("Start to Listen and Serve")
+	m.log.Info("starting to listen and serve")
+	defer m.log.Info("end of listening and serving")
+
 	if m.router == nil {
 		m.route()
 	}
-	return http.ListenAndServe(bind, m.router)
+
+	if err := http.ListenAndServe(bind, m.router); err != nil {
+		m.log.WithError(err).Error("could not listen and serve")
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) route() {
-	m.log.Info("Start to set router")
+	m.log.Info("starting to set router")
+
 	r := mux.NewRouter()
 	r.HandleFunc("/register", m.handleRegister).Methods("POST")
 	r.HandleFunc("/get", m.handleGet).Methods("POST")
@@ -64,179 +72,116 @@ func (m *Manager) route() {
 }
 
 func (m *Manager) handleGet(w http.ResponseWriter, r *http.Request) {
-	log := m.log.WithField("Request", "get")
-	log.Info("Start to handle request")
-
-	cli, status, msg := m.validateToken(r)
-	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
-		http.Error(w, msg, status)
-		return
-	}
-
-	var obj *object.Object
-	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
-		http.Error(w, msg, status)
-		return
-	}
-
-	status, msg = m.auth.Auth(cli.id, auth.Get, obj)
-	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
-		http.Error(w, msg, status)
-		return
-	}
-
-	result, err := m.simulator.Get(obj.Key)
-	if err != nil {
-		log.WithError(err).Debug("Error in get result from simulator")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		log.WithError(err).Debug("Can not encode result of simulator")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	m.handleRequest(w, r, auth.Get)
 }
+
 func (m *Manager) handleFind(w http.ResponseWriter, r *http.Request) {
-	log := m.log.WithField("Request", "find")
-	log.Info("Start to handle request")
-
-	cli, status, msg := m.validateToken(r)
-	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
-		http.Error(w, msg, status)
-		return
-	}
-
-	var obj *object.Object
-	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
-		http.Error(w, msg, status)
-		return
-	}
-
-	status, msg = m.auth.Auth(cli.id, auth.Find, obj)
-	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
-		http.Error(w, msg, status)
-		return
-	}
-
-	objectList, err := m.simulator.Find(obj.Key)
-	if err != nil {
-		log.WithError(err).Debug("Error in get result from simulator")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := json.NewEncoder(w).Encode(objectList); err != nil {
-		log.WithError(err).Debug("Can not encode result of simulator")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	m.handleRequest(w, r, auth.Find)
 }
 
 func (m *Manager) handleSet(w http.ResponseWriter, r *http.Request) {
-	log := m.log.WithField("Request", "set")
-	log.Info("Start to handle request")
-
-	cli, status, msg := m.validateToken(r)
-	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
-		http.Error(w, msg, status)
-		return
-	}
-
-	var obj *object.Object
-	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
-		http.Error(w, msg, status)
-		return
-	}
-
-	status, msg = m.auth.Auth(cli.id, auth.Set, obj)
-	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
-		http.Error(w, msg, status)
-		return
-	}
-
-	if err := m.simulator.Set(obj); err != nil {
-		log.WithError(err).Debug("Error in get result from simulator")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusAccepted)
+	m.handleRequest(w, r, auth.Set)
 }
 
 func (m *Manager) handleDelete(w http.ResponseWriter, r *http.Request) {
-	log := m.log.WithField("Request", "delete")
-	log.Info("Start to handle request")
-
-	cli, status, msg := m.validateToken(r)
-	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
-		http.Error(w, msg, status)
-		return
-	}
-
-	var obj *object.Object
-	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
-		http.Error(w, msg, status)
-		return
-	}
-
-	status, msg = m.auth.Auth(cli.id, auth.Delete, obj)
-	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
-		http.Error(w, msg, status)
-		return
-	}
-
-	if err := m.simulator.Delete(obj.Key); err != nil {
-		log.WithError(err).Debug("Error in get result from simulator")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	w.WriteHeader(http.StatusAccepted)
+	m.handleRequest(w, r, auth.Delete)
 }
 
 func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
-	log := m.log.WithField("Request", "watch")
-	log.Info("Start to handle request")
+	m.handleRequest(w, r, auth.Watch)
+}
+
+func (m *Manager) handleRequest(w http.ResponseWriter, r *http.Request, method auth.Method) {
+	log := m.log.WithField("method", method)
 
 	cli, status, msg := m.validateToken(r)
 	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
+		log.WithFields(logrus.Fields{
+			"status":  status,
+			"message": msg,
+		}).Error("could not validate token")
 		http.Error(w, msg, status)
 		return
 	}
 
 	var obj *object.Object
 	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
+		log.WithFields(logrus.Fields{
+			"status":    status,
+			"message":   msg,
+			"client-id": cli.id,
+		}).Error("could not decode the body of request")
 		http.Error(w, msg, status)
 		return
 	}
 
-	status, msg = m.auth.Auth(cli.id, auth.Watch, obj)
+	status, msg = m.auth.Auth(cli.id, method, obj)
 	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Unauthorized action")
+		log.WithFields(logrus.Fields{
+			"status":       status,
+			"message":      msg,
+			"asked-object": obj.String(),
+			"client-id":    cli.id,
+		}).Error("could not auth the request")
 		http.Error(w, msg, status)
 		return
 	}
 
-	if err := m.simulator.Watch(obj.Key, cli.GetChan()); err != nil {
-		log.WithError(err).Debug("Error in get result from simulator")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if err := m.respond(w, obj, cli, method); err != nil {
+		log.WithFields(logrus.Fields{
+			"asked-object": obj.String(),
+			"client-id":    cli.id,
+		}).WithError(err).Error("could not respond to the request")
 	}
-	w.WriteHeader(http.StatusOK)
+}
+
+func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client, method auth.Method) error {
+	var result interface{} = nil
+	var err error = nil
+
+	switch method {
+	case auth.Get:
+		result, err = m.simulator.Get(obj.Key)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+		}
+		if err = json.NewEncoder(w).Encode(result); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	case auth.Find:
+		result, err = m.simulator.Find(obj.Key)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		if err = json.NewEncoder(w).Encode(result); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	case auth.Delete:
+		err = m.simulator.Delete(obj.Key)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.WriteHeader(http.StatusAccepted)
+		}
+	case auth.Set:
+		err = m.simulator.Set(obj)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusAccepted)
+		}
+	case auth.Watch:
+		err = m.simulator.Watch(obj.Key, cli.ch)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+	default:
+		err = fmt.Errorf("invalid method for simulation")
+		m.log.Fatal("invalid method for simulation")
+	}
+	return err
 }
 
 func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
