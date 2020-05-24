@@ -11,13 +11,8 @@ import (
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
-)
-
-const (
-	readBufSize  = 1024
-	writeBufSize = 1024
-	tokenKey     = "token"
 )
 
 type Manager struct {
@@ -94,7 +89,7 @@ func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
 func (m *Manager) handleRequest(w http.ResponseWriter, r *http.Request, method auth.Method) {
 	log := m.log.WithField("method", method)
 
-	cli, status, msg := m.validateToken(r)
+	cli, status, msg := m.tokenToClient(r)
 	if status != http.StatusOK {
 		log.WithFields(logrus.Fields{
 			"status":  status,
@@ -103,35 +98,29 @@ func (m *Manager) handleRequest(w http.ResponseWriter, r *http.Request, method a
 		http.Error(w, msg, status)
 		return
 	}
+	log = log.WithField("client-id", cli.id)
 
 	var obj *object.Object
-	if status, msg = decodeJSONBody(w, r, &obj); status != http.StatusOK {
-		log.WithFields(logrus.Fields{
-			"status":    status,
-			"message":   msg,
-			"client-id": cli.id,
-		}).Error("could not decode the body of request")
-		http.Error(w, msg, status)
+	if msg = decodeJSONBody(w, r, &obj); msg != "" {
+		log.WithField("message", msg).Error("could not decode the body of request")
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
+	log = log.WithField("asked-object", obj.String())
+	log.Debug("starting to handle request")
 
 	status, msg = m.auth.Auth(cli.id, method, obj)
 	if status != http.StatusOK {
 		log.WithFields(logrus.Fields{
-			"status":       status,
-			"message":      msg,
-			"asked-object": obj.String(),
-			"client-id":    cli.id,
+			"status":  status,
+			"message": msg,
 		}).Error("could not auth the request")
 		http.Error(w, msg, status)
 		return
 	}
 
 	if err := m.respond(w, obj, cli, method); err != nil {
-		log.WithFields(logrus.Fields{
-			"asked-object": obj.String(),
-			"client-id":    cli.id,
-		}).WithError(err).Error("could not respond to the request")
+		log.WithError(err).Error("could not respond correctly to the request")
 	}
 }
 
@@ -185,30 +174,30 @@ func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client
 }
 
 func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
-	log := m.log.WithField("Request", "register")
-	log.Info("Start to handle request")
+	log := m.log.WithField("method", "register")
 
-	cred := struct {
-		ID string
-	}{}
-	if status, msg := decodeJSONBody(w, r, &cred); status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Can not decode json body")
-		http.Error(w, msg, status)
+	cred := struct{ ID string }{}
+	if msg := decodeJSONBody(w, r, &cred); msg != "" {
+		log.WithFields(logrus.Fields{
+			"message": msg,
+		}).Error("could not decode the body of request")
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
 	if status, msg := m.auth.Register(cred.ID); status != http.StatusOK {
-		log.WithField("status", status).WithField("message", msg).Debug("Fail to authenticate")
+		log.WithFields(logrus.Fields{
+			"status":    status,
+			"message":   msg,
+			"client-id": cred.ID,
+		}).Error("could not auth the request")
 		http.Error(w, msg, status)
 		return
 	}
 
-	cli, status, msg := m.getClientWithID(cred.ID)
-	if status != http.StatusOK {
-		if cli, status, msg = m.registerNewClient(cred.ID); status != http.StatusOK {
-			http.Error(w, msg, status)
-			return
-		}
+	cli := m.getClientWithID(cred.ID)
+	if cli == nil {
+		cli = m.registerNewClient(cred.ID)
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -218,21 +207,29 @@ func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
-	log := m.log.WithField("Request", "socket")
-	log.Info("Start to handle request")
+const (
+	readBufSize  = 1024
+	writeBufSize = 1024
+)
 
-	cli, status, msg := m.validateToken(r)
+func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
+	log := m.log.WithField("method", "socket")
+
+	cli, status, msg := m.tokenToClient(r)
 	if status != http.StatusOK {
-		log.WithField("Status", status).WithField("message", msg).Debug("Invalid token")
+		log.WithFields(logrus.Fields{
+			"status":  status,
+			"message": msg,
+		}).Error("could not validate token")
 		http.Error(w, msg, status)
 		return
 	}
 
-	log.Info("Start to upgrade connection")
 	conn, err := websocket.Upgrade(w, r, w.Header(), readBufSize, writeBufSize)
 	if err != nil {
-		log.WithError(err).Debug("Can not upgrade connection")
+		log.WithFields(logrus.Fields{
+			"client-id": cli.id,
+		}).WithError(err).Error("could not upgrade connection to websocket")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -240,56 +237,46 @@ func (m *Manager) handleSocket(w http.ResponseWriter, r *http.Request) {
 	cli.Reconcile(conn)
 }
 
-func (m *Manager) validateToken(r *http.Request) (*client, int, string) {
+const tokenKey = "token"
+
+func (m *Manager) tokenToClient(r *http.Request) (*client, int, string) {
+	m.Lock()
+	defer m.Unlock()
+
 	cookie, err := r.Cookie(tokenKey)
 	if err != nil {
-		return nil, http.StatusUnauthorized, fmt.Sprintf("Invalid token")
+		return nil, http.StatusUnauthorized, "invalid token type"
 	}
 	token := cookie.Value
 
-	cli, status, msg := m.getClientWithToken(token)
-	if status != http.StatusOK {
-		return nil, http.StatusUnauthorized, msg
-	}
-
-	if cli.token != token {
-		return nil, http.StatusUnauthorized, "Invalid token"
+	cli, exists := m.clients[token]
+	if !exists {
+		return nil, http.StatusNotFound, "invalid token"
 	}
 	return cli, http.StatusOK, ""
 }
 
-func (m *Manager) getClientWithToken(token string) (*client, int, string) {
+func (m *Manager) getClientWithID(id string) *client {
 	m.Lock()
 	defer m.Unlock()
-	m.log.Info("Start to get a client")
 
-	if cli, exists := m.clients[token]; exists {
-		return cli, http.StatusOK, ""
-	}
-	return nil, http.StatusNotFound, "There is no client with the specified cookie"
-}
-
-func (m *Manager) getClientWithID(id string) (*client, int, string) {
 	for _, c := range m.clients {
 		if c.id == id {
-			return c, http.StatusOK, ""
+			return c
 		}
 	}
-	return nil, http.StatusNotFound, "User not found"
+	return nil
 }
 
-func (m *Manager) registerNewClient(id string) (*client, int, string) {
+func (m *Manager) registerNewClient(id string) *client {
+	m.log.WithField("client-id", id).Info("starting to register new client")
 	m.Lock()
 	defer m.Unlock()
-	m.log.Info("Start to create a new client")
 
-	token, status := newCookie()
-	if status != http.StatusOK {
-		return nil, status, "Can not generate new cookie"
-	}
-
+	token := uuid.NewV4().String()
 	client := NewClient(id, token)
+
 	m.clients[token] = client
 
-	return client, http.StatusOK, ""
+	return client
 }
