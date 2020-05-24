@@ -1,9 +1,15 @@
 package object
 
+import "fmt"
+
 type Key struct {
 	Type      string
 	Namespace string
 	Name      string
+}
+
+func (k Key) String() string {
+	return fmt.Sprintf("{Type: %s, Namespace: %s, Name: %s}", k.Type, k.Namespace, k.Name)
 }
 
 func (k *Key) Equal(key *Key) bool {
@@ -32,4 +38,13 @@ type Object struct {
 	Key   *Key
 	Value interface{}
 	Owner string
+}
+
+func (o Object) String() string {
+	val := "'...'"
+	if o.Value == nil {
+		val = "nil"
+	}
+
+	return fmt.Sprintf("{Owner: %s, Key: %v, Value: %s}", o.Owner, o.Key, val)
 }
