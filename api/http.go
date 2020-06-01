@@ -125,7 +125,7 @@ func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client
 	case auth.Get:
 		result, err = m.simulator.Get(obj.Key)
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "could not find object by the given key", http.StatusUnprocessableEntity)
 		}
 		if err = json.NewEncoder(w).Encode(result); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -141,25 +141,26 @@ func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client
 	case auth.Delete:
 		err = m.simulator.Delete(obj.Key)
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "could not find object by the given key", http.StatusUnprocessableEntity)
 		} else {
-			w.WriteHeader(http.StatusAccepted)
+			w.WriteHeader(http.StatusNoContent)
 		}
 	case auth.Set:
 		err = m.simulator.Set(obj)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
-			w.WriteHeader(http.StatusAccepted)
+			w.WriteHeader(http.StatusNoContent)
 		}
 	case auth.Watch:
 		err = m.simulator.Watch(obj.Key, cli.ch)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusNoContent)
 		}
 	default:
+		w.WriteHeader(http.StatusInternalServerError)
 		err = fmt.Errorf("invalid method for simulation")
 		m.log.Fatal("invalid method for simulation")
 	}
@@ -180,7 +181,7 @@ func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	if err := m.auth.Register(cred.ID); err != nil {
 		log.WithField("client-id", cred.ID).WithError(err).Error("could not auth the request")
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -193,7 +194,7 @@ func (m *Manager) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Name:  "token",
 		Value: cli.GetToken(),
 	})
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusOK)
 }
 
 const (

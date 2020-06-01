@@ -56,7 +56,7 @@ exec: build
 
 docker-build: build
 	@echo ">>>  Building docker image..."
-	docker build --no-cache -t $(IMG) .
+	docker build -t $(IMG) .
 
 docker-push: docker-build
 	@echo ">>>  Pushing docker image..."
