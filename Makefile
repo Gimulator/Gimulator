@@ -3,7 +3,7 @@
 COMMIT := $(shell git rev-parse --short HEAD)
 VERSION := $(shell git describe --tags ${COMMIT})
 PROJECTNAME := $(shell basename "$(PWD)")
-IMG ?= xerac/gimulator-docker:${VERSION}
+IMG ?= xerac/gimulator:${VERSION}
 
 
 # Go related variables.
