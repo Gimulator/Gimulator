@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/Gimulator/Gimulator/object"
@@ -43,7 +45,23 @@ func loadConfig(path string) (map[string]*actor, map[string]*role, error) {
 
 	roles := loadRoles(config.Roles)
 	actors := loadActors(config.Actors)
-	return actors, roles, nil
+	err = check_actors(actors, roles)
+	return actors, roles, err
+}
+
+func check_actors(actors map[string]*actor, roles map[string]*role) error {
+	for _, val := range actors {
+		flag := true
+		for key := range roles {
+			if val.role == key {
+				flag = false
+			}
+		}
+		if flag {
+			return errors.New(fmt.Sprintf("Actor with role %s is invalid.", val.role))
+		}
+	}
+	return nil
 }
 
 func loadRoles(cRoles []Role) map[string]*role {
