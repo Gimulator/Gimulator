@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/Gimulator/Gimulator/object"
@@ -41,9 +42,40 @@ func loadConfig(path string) (map[string]*actor, map[string]*role, error) {
 		return nil, nil, err
 	}
 
+	if err := validateConfig(config); err != nil {
+		return nil, nil, err
+	}
+
 	roles := loadRoles(config.Roles)
 	actors := loadActors(config.Actors)
+
 	return actors, roles, nil
+}
+
+func validateConfig(config Config) error {
+	if err := validateActorsRole(config); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateActorsRole(config Config) error {
+	for _, actor := range config.Actors {
+		actorRole := actor.Role
+
+		isValid := false
+		for _, role := range config.Roles {
+			if actorRole == role.Role {
+				isValid = true
+			}
+		}
+
+		if !isValid {
+			return fmt.Errorf("actor '%s' has invalid role '%s'", actor.ID, actor.Role)
+		}
+	}
+	return nil
 }
 
 func loadRoles(cRoles []Role) map[string]*role {
@@ -101,3 +133,4 @@ func loadActor(cActor Actor) *actor {
 		isRegistered: false,
 	}
 }
+
