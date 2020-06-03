@@ -42,25 +42,37 @@ func loadConfig(path string) (map[string]*actor, map[string]*role, error) {
 		return nil, nil, err
 	}
 
-	roles := loadRoles(config.Roles)
-	actors := loadActors(config.Actors)
 	if err := validateConfig(config); err != nil {
 		return nil, nil, err
 	}
+
+	roles := loadRoles(config.Roles)
+	actors := loadActors(config.Actors)
+
 	return actors, roles, nil
 }
 
 func validateConfig(config Config) error {
-	roles := loadRoles(config.Roles)
-	actors := loadActors(config.Actors)
-	err := validateActorsRole(actors, roles)
-	return err
+	if err := validateActorsRole(config); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func validateActorsRole(actors map[string]*actor, roles map[string]*role) error {
-	for _, actor := range actors {
-		if _, exists := roles[actor.role]; !exists {
-			return fmt.Errorf("actor %s has invalid role %s", actor.id, actor.role)
+func validateActorsRole(config Config) error {
+	for _, actor := range config.Actors {
+		actorRole := actor.Role
+
+		isValid := false
+		for _, role := range config.Roles {
+			if actorRole == role.Role {
+				isValid = true
+			}
+		}
+
+		if !isValid {
+			return fmt.Errorf("actor '%s' has invalid role '%s'", actor.ID, actor.Role)
 		}
 	}
 	return nil
@@ -121,3 +133,4 @@ func loadActor(cActor Actor) *actor {
 		isRegistered: false,
 	}
 }
+
