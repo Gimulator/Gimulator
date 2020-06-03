@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -45,20 +44,23 @@ func loadConfig(path string) (map[string]*actor, map[string]*role, error) {
 
 	roles := loadRoles(config.Roles)
 	actors := loadActors(config.Actors)
-	err = check_actors(actors, roles)
-	return actors, roles, err
+	if err := validateConfig(config); err != nil {
+		return nil, nil, err
+	}
+	return actors, roles, nil
 }
 
-func check_actors(actors map[string]*actor, roles map[string]*role) error {
-	for _, val := range actors {
-		flag := true
-		for key := range roles {
-			if val.role == key {
-				flag = false
-			}
-		}
-		if flag {
-			return errors.New(fmt.Sprintf("Actor with role %s is invalid.", val.role))
+func validateConfig(config Config) error {
+	roles := loadRoles(config.Roles)
+	actors := loadActors(config.Actors)
+	err := validateActorsRole(actors, roles)
+	return err
+}
+
+func validateActorsRole(actors map[string]*actor, roles map[string]*role) error {
+	for _, actor := range actors {
+		if _, exists := roles[actor.role]; !exists {
+			return fmt.Errorf("actor %s has invalid role %s", actor.id, actor.role)
 		}
 	}
 	return nil
