@@ -19,18 +19,20 @@ const (
 )
 
 type client struct {
-	id    string
-	ch    chan *object.Object
-	token string
-	log   *logrus.Entry
+	id      string
+	ch      chan *object.Object
+	token   string
+	log     *logrus.Entry
+	lastObj *object.Object
 }
 
 func NewClient(id string, token string) *client {
 	return &client{
-		id:    id,
-		token: token,
-		ch:    make(chan *object.Object, channelBufSize),
-		log:   logrus.WithField("entity", "client"),
+		id:      id,
+		token:   token,
+		ch:      make(chan *object.Object, channelBufSize),
+		log:     logrus.WithField("entity", "client"),
+		lastObj: nil,
 	}
 }
 
@@ -52,6 +54,21 @@ func (c *client) Reconcile(conn *websocket.Conn) {
 		ticker.Stop()
 		conn.Close()
 	}()
+
+	if c.lastObj != nil {
+		if err := conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+			log.WithError(err).Error("could not set write deadline for connection")
+		}
+
+		log.WithField("object", c.lastObj.String()).Debug("starting to write an object to the connection")
+		if err := conn.WriteJSON(c.lastObj); err != nil {
+			log.WithError(err).Error("could not write json to the connection")
+			return
+		}
+
+		c.lastObj = nil
+	}
+
 	for {
 		select {
 		case obj, ok := <-c.ch:
@@ -70,8 +87,10 @@ func (c *client) Reconcile(conn *websocket.Conn) {
 			log.WithField("object", obj.String()).Debug("starting to write an object to the connection")
 			if err := conn.WriteJSON(obj); err != nil {
 				log.WithError(err).Error("could not write json to the connection")
+				c.lastObj = obj
 				return
 			}
+			c.lastObj = nil
 		case <-ticker.C:
 			if err := conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
 				log.WithError(err).Error("could not set write deadline for connection")
