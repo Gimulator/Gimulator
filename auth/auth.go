@@ -129,10 +129,14 @@ func (a *Auth) Auth(id string, method Method, obj *object.Object) error {
 		return fmt.Errorf("role '%s' does not exists", actor.role)
 	}
 
-	if rule, exists := role.rules[obj.Key.Type]; !exists || !rule.match(obj.Key, method) {
-		// TODO: is this Ok to return actor.role to the client???
-		return fmt.Errorf("access denied on key=%s, method=%s, role=%s", *obj.Key, method, actor.role)
+	if rule, exists := role.rules[obj.Key.Type]; exists && rule.match(obj.Key, method) {
+		return nil
 	}
 
-	return nil
+	if rule, exists := role.rules[""]; exists && rule.match(obj.Key, method) {
+		return nil
+	}
+
+	// TODO: is this Ok to return actor.role to the client???
+	return fmt.Errorf("access denied on key=%s, method=%s, role=%s", *obj.Key, method, actor.role)
 }
