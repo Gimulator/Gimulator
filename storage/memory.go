@@ -21,12 +21,11 @@ func (m *Memory) Get(key *object.Key) (*object.Object, error) {
 }
 
 func (m *Memory) Set(obj *object.Object) error {
-	m.set(obj)
-	return nil
+	return m.set(obj)
 }
 
 func (m *Memory) Delete(key *object.Key) error {
-	return m.del(key)
+	return m.delete(key)
 }
 
 func (m *Memory) Find(key *object.Key) ([]*object.Object, error) {
@@ -34,17 +33,33 @@ func (m *Memory) Find(key *object.Key) ([]*object.Object, error) {
 }
 
 func (m *Memory) get(key *object.Key) (*object.Object, error) {
+	err := m.validateKey(key)
+	if err != nil {
+		return nil, err
+	}
+
 	if object, exists := m.storage[*key]; exists {
 		return object, nil
 	}
 	return nil, fmt.Errorf("object with key=%v does not exist", key)
 }
 
-func (m *Memory) set(obj *object.Object) {
+func (m *Memory) set(obj *object.Object) error {
+	err := m.validateKey(obj.Key)
+	if err != nil {
+		return err
+	}
+
 	m.storage[*obj.Key] = obj
+	return nil
 }
 
-func (m *Memory) del(key *object.Key) error {
+func (m *Memory) delete(key *object.Key) error {
+	err := m.validateKey(key)
+	if err != nil {
+		return err
+	}
+
 	if _, exists := m.storage[*key]; exists {
 		delete(m.storage, *key)
 		return nil
@@ -60,4 +75,17 @@ func (m *Memory) find(key *object.Key) []*object.Object {
 		}
 	}
 	return result
+}
+
+func (m *Memory) validateKey(key *object.Key) error {
+	if key.Name == "" {
+		return fmt.Errorf("invalid key with empty Name")
+	}
+	if key.Namespace == "" {
+		return fmt.Errorf("invalid key with empty Namespace")
+	}
+	if key.Type == "" {
+		return fmt.Errorf("invalid key with empty Type")
+	}
+	return nil
 }
