@@ -5,6 +5,16 @@ import (
 	"time"
 )
 
+type Method string
+
+const (
+	MethodGet    Method = "get"
+	MethodSet    Method = "set"
+	MethodFind   Method = "find"
+	MethodDelete Method = "delete"
+	MethodWatch  Method = "watch"
+)
+
 type Key struct {
 	Type      string
 	Namespace string
@@ -40,6 +50,7 @@ func (k *Key) Match(key *Key) bool {
 type Meta struct {
 	CreationTime time.Time
 	Owner        string
+	Method       Method
 }
 
 type Object struct {

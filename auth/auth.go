@@ -9,22 +9,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Method string
-
-const (
-	Get    Method = "get"
-	Set    Method = "set"
-	Find   Method = "find"
-	Delete Method = "delete"
-	Watch  Method = "watch"
-)
-
 type rule struct {
 	key     object.Key
-	methods map[Method]bool
+	methods map[object.Method]bool
 }
 
-func (r *rule) match(key *object.Key, method Method) bool {
+func (r *rule) match(key *object.Key, method object.Method) bool {
 	if !r.key.Match(key) {
 		return false
 	}
@@ -108,7 +98,7 @@ func (a *Auth) Register(id string) error {
 	return nil
 }
 
-func (a *Auth) Auth(id string, method Method, obj *object.Object) error {
+func (a *Auth) Auth(id string, method object.Method, obj *object.Object) error {
 	actor, exists := a.actors[id]
 	if !exists {
 		return fmt.Errorf("actor with id=%s does not exist", id)

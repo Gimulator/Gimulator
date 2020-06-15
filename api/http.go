@@ -67,26 +67,26 @@ func (m *Manager) route() {
 }
 
 func (m *Manager) handleGet(w http.ResponseWriter, r *http.Request) {
-	m.handleRequest(w, r, auth.Get)
+	m.handleRequest(w, r, object.MethodGet)
 }
 
 func (m *Manager) handleFind(w http.ResponseWriter, r *http.Request) {
-	m.handleRequest(w, r, auth.Find)
+	m.handleRequest(w, r, object.MethodFind)
 }
 
 func (m *Manager) handleSet(w http.ResponseWriter, r *http.Request) {
-	m.handleRequest(w, r, auth.Set)
+	m.handleRequest(w, r, object.MethodSet)
 }
 
 func (m *Manager) handleDelete(w http.ResponseWriter, r *http.Request) {
-	m.handleRequest(w, r, auth.Delete)
+	m.handleRequest(w, r, object.MethodDelete)
 }
 
 func (m *Manager) handleWatch(w http.ResponseWriter, r *http.Request) {
-	m.handleRequest(w, r, auth.Watch)
+	m.handleRequest(w, r, object.MethodWatch)
 }
 
-func (m *Manager) handleRequest(w http.ResponseWriter, r *http.Request, method auth.Method) {
+func (m *Manager) handleRequest(w http.ResponseWriter, r *http.Request, method object.Method) {
 	log := m.log.WithField("method", method)
 
 	cli, err := m.tokenToClient(r)
@@ -117,42 +117,42 @@ func (m *Manager) handleRequest(w http.ResponseWriter, r *http.Request, method a
 	}
 }
 
-func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client, method auth.Method) error {
+func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client, method object.Method) error {
 	var result interface{} = nil
 	var err error = nil
 
 	switch method {
-	case auth.Get:
-		result, err = m.simulator.Get(obj.Key)
+	case object.MethodGet:
+		result, err = m.simulator.Get(cli.id, obj.Key)
 		if err != nil {
 			http.Error(w, "could not find object by the given key", http.StatusUnprocessableEntity)
 		}
 		if err = json.NewEncoder(w).Encode(result); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-	case auth.Find:
-		result, err = m.simulator.Find(obj.Key)
+	case object.MethodFind:
+		result, err = m.simulator.Find(cli.id, obj.Key)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		if err = json.NewEncoder(w).Encode(result); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-	case auth.Delete:
-		err = m.simulator.Delete(obj.Key)
+	case object.MethodDelete:
+		err = m.simulator.Delete(cli.id, obj.Key)
 		if err != nil {
 			http.Error(w, "could not find object by the given key", http.StatusUnprocessableEntity)
 		} else {
 			w.WriteHeader(http.StatusNoContent)
 		}
-	case auth.Set:
-		err = m.simulator.Set(obj)
+	case object.MethodSet:
+		err = m.simulator.Set(cli.id, obj)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusNoContent)
 		}
-	case auth.Watch:
+	case object.MethodWatch:
 		err = m.simulator.Watch(cli.id, obj.Key, cli.ch)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

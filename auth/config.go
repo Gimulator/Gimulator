@@ -9,10 +9,10 @@ import (
 )
 
 type Rule struct {
-	Type      string   `yaml:"type"`
-	Name      string   `yaml:"name"`
-	Namespace string   `yaml:"namespace"`
-	Methods   []Method `yaml:"methods"`
+	Type      string          `yaml:"type"`
+	Name      string          `yaml:"name"`
+	Namespace string          `yaml:"namespace"`
+	Methods   []object.Method `yaml:"methods"`
 }
 
 type Role struct {
@@ -109,7 +109,7 @@ func loadRule(src Rule) *rule {
 		Type:      src.Type,
 	}
 
-	dst.methods = make(map[Method]bool)
+	dst.methods = make(map[object.Method]bool)
 	for _, m := range src.Methods {
 		dst.methods[m] = true
 	}
@@ -133,4 +133,3 @@ func loadActor(cActor Actor) *actor {
 		isRegistered: false,
 	}
 }
-

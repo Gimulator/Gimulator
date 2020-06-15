@@ -2,6 +2,7 @@ package simulator
 
 import (
 	"sync"
+	"time"
 
 	"github.com/Gimulator/Gimulator/object"
 	"github.com/Gimulator/Gimulator/storage"
@@ -21,16 +22,22 @@ func NewSimulator(strg storage.Storage) *Simulator {
 	}
 }
 
-func (s *Simulator) Get(key *object.Key) (*object.Object, error) {
+func (s *Simulator) Get(id string, key *object.Key) (*object.Object, error) {
 	s.Lock()
 	defer s.Unlock()
 
 	return s.storage.Get(key)
 }
 
-func (s *Simulator) Set(obj *object.Object) error {
+func (s *Simulator) Set(id string, obj *object.Object) error {
 	s.Lock()
 	defer s.Unlock()
+
+	obj.Meta = &object.Meta{
+		Owner:        id,
+		CreationTime: time.Now(),
+		Method:       object.MethodSet,
+	}
 
 	if err := s.storage.Set(obj); err != nil {
 		return err
@@ -40,14 +47,14 @@ func (s *Simulator) Set(obj *object.Object) error {
 	return nil
 }
 
-func (s *Simulator) Delete(key *object.Key) error {
+func (s *Simulator) Delete(id string, key *object.Key) error {
 	s.Lock()
 	defer s.Unlock()
 
 	return s.storage.Delete(key)
 }
 
-func (s *Simulator) Find(key *object.Key) ([]*object.Object, error) {
+func (s *Simulator) Find(id string, key *object.Key) ([]*object.Object, error) {
 	s.Lock()
 	defer s.Unlock()
 
