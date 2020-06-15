@@ -1,6 +1,9 @@
 package object
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type Key struct {
 	Type      string
@@ -34,10 +37,15 @@ func (k *Key) Match(key *Key) bool {
 	return true
 }
 
+type Meta struct {
+	CreationTime time.Time
+	Owner        string
+}
+
 type Object struct {
+	Meta  *Meta
 	Key   *Key
 	Value interface{}
-	Owner string
 }
 
 func (o Object) String() string {
@@ -46,5 +54,5 @@ func (o Object) String() string {
 		val = "nil"
 	}
 
-	return fmt.Sprintf("{Owner: %s, Key: %v, Value: %s}", o.Owner, o.Key, val)
+	return fmt.Sprintf("{Owner: %s, Key: %v, Value: %s}", o.Meta.Owner, o.Key, val)
 }

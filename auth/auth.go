@@ -118,7 +118,7 @@ func (a *Auth) Auth(id string, method Method, obj *object.Object) error {
 		return fmt.Errorf("actor with id=%s has not registerd", id)
 	}
 
-	if actor.id != obj.Owner {
+	if actor.id != id {
 		return fmt.Errorf("id does not match with object owner")
 	}
 
