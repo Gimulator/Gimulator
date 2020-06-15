@@ -153,7 +153,7 @@ func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client
 			w.WriteHeader(http.StatusNoContent)
 		}
 	case auth.Watch:
-		err = m.simulator.Watch(obj.Key, cli.ch)
+		err = m.simulator.Watch(cli.id, obj.Key, cli.ch)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {

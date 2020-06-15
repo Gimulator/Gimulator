@@ -16,7 +16,7 @@ type Simulator struct {
 func NewSimulator(strg storage.Storage) *Simulator {
 	return &Simulator{
 		Mutex:    sync.Mutex{},
-		spreader: Newspreader(),
+		spreader: NewSpreader(),
 		storage:  strg,
 	}
 }
@@ -54,11 +54,11 @@ func (s *Simulator) Find(key *object.Key) ([]*object.Object, error) {
 	return s.storage.Find(key)
 }
 
-func (s *Simulator) Watch(key *object.Key, ch chan *object.Object) error {
+func (s *Simulator) Watch(id string, key *object.Key, ch chan *object.Object) error {
 	s.Lock()
 	defer s.Unlock()
 
-	if err := s.spreader.AddWatcher(key, ch); err != nil {
+	if err := s.spreader.AddWatcher(id, key, ch); err != nil {
 		return err
 	}
 	return nil

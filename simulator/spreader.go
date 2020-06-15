@@ -1,54 +1,42 @@
 package simulator
 
 import (
-	"fmt"
-
 	"github.com/Gimulator/Gimulator/object"
 	"github.com/sirupsen/logrus"
 )
 
-type watcher struct {
-	key *object.Key
-	ch  chan *object.Object
-}
-
 type spreader struct {
-	watchers []watcher
+	watchers map[string]watcher
 	log      *logrus.Entry
 }
 
-func Newspreader() *spreader {
+func NewSpreader() *spreader {
 	return &spreader{
-		watchers: make([]watcher, 0),
+		watchers: make(map[string]watcher),
 		log:      logrus.WithField("entity", "spreader"),
 	}
 }
 
-func (s *spreader) AddWatcher(key *object.Key, ch chan *object.Object) error {
-	if ch == nil {
-		return fmt.Errorf("nil channel")
+func (s *spreader) AddWatcher(id string, key *object.Key, ch chan *object.Object) error {
+	if w, exists := s.watchers[id]; exists {
+		w.addWatch(key)
+		return nil
 	}
 
-	watcher := watcher{
-		key: key,
-		ch:  ch,
+	w, err := newWatcher(ch)
+	if err != nil {
+		return err
 	}
+	w.addWatch(key)
 
-	s.watchers = append(s.watchers, watcher)
 	return nil
 }
 
 func (s *spreader) Spread(obj *object.Object) {
 	s.log.Debug("starting to write objects to channels")
 
-	key := *obj.Key
-	for _, w := range s.watchers {
-		if w.key.Match(&key) {
-			select {
-			case w.ch <- obj:
-			default:
-				s.log.WithField("object", obj.String()).Error("can not write to channel")
-			}
-		}
+	for id, w := range s.watchers {
+		err := w.sendIfNeeded(obj)
+		s.log.WithField("id", id).WithField("object", obj.String()).Error(err)
 	}
 }
