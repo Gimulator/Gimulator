@@ -87,25 +87,8 @@ func (c *Config) validate() error {
 }
 
 func (c *Config) validateRoles() error {
-	if err := c.validateRolesName(); err != nil {
-		return err
-	}
-
 	if err := c.validateRolesRule(); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (c *Config) validateRolesName() error {
-	tmp := make(map[string]bool)
-	for _, role := range c.Roles {
-		tmp[role.Name] = true
-	}
-
-	if len(tmp) != len(c.Roles) {
-		return fmt.Errorf("duplicate role is not allowed")
 	}
 
 	return nil
