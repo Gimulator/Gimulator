@@ -49,7 +49,7 @@ func (a *Auth) Register(id string) error {
 }
 
 func (a *Auth) Auth(id string, method object.Method, obj *object.Object) error {
-	hash := a.hashRequest(id, method, *obj.Key)
+	hash := a.hash(id, method, *obj.Key)
 
 	if i, exists := a.cache.Get(hash); exists {
 		resp := i.(response)
@@ -106,6 +106,6 @@ func (a *Auth) getResp(hash string) (response, bool) {
 	return i.(response), exists
 }
 
-func (a *Auth) hashRequest(id string, method object.Method, key object.Key) string {
+func (a *Auth) hash(id string, method object.Method, key object.Key) string {
 	return fmt.Sprintf("%s-%s-%s-%s-%s", id, method, key.Type, key.Namespace, key.Name)
 }

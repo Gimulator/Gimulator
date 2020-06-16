@@ -125,7 +125,7 @@ func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client
 	case object.MethodGet:
 		result, err = m.simulator.Get(cli.id, obj.Key)
 		if err != nil {
-			http.Error(w, "could not find object by the given key", http.StatusUnprocessableEntity)
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		}
 		if err = json.NewEncoder(w).Encode(result); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -133,7 +133,9 @@ func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client
 	case object.MethodFind:
 		result, err = m.simulator.Find(cli.id, obj.Key)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			//TODO: update api doc
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			//w.WriteHeader(http.StatusInternalServerError)
 		}
 		if err = json.NewEncoder(w).Encode(result); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
