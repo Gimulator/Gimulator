@@ -11,12 +11,12 @@ type watcher struct {
 	ch   chan *object.Object
 }
 
-func newWatcher(ch chan *object.Object) (*watcher, error) {
+func newWatcher(ch chan *object.Object) (watcher, error) {
 	if ch == nil {
-		return nil, fmt.Errorf("nil channel for creating new watcher")
+		return watcher{}, fmt.Errorf("nil channel for creating new watcher")
 	}
 
-	return &watcher{
+	return watcher{
 		keys: make([]*object.Key, 0),
 		ch:   ch,
 	}, nil

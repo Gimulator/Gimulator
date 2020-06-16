@@ -28,15 +28,17 @@ func (s *spreader) AddWatcher(id string, key *object.Key, ch chan *object.Object
 		return err
 	}
 	w.addWatch(key)
+	s.watchers[id] = w
 
 	return nil
 }
 
 func (s *spreader) Spread(obj *object.Object) {
-	s.log.Debug("starting to write objects to channels")
+	s.log.WithField("object", obj.String()).Debug("starting to write objects to channels")
 
 	for id, w := range s.watchers {
-		err := w.sendIfNeeded(obj)
-		s.log.WithField("id", id).WithField("object", obj.String()).Error(err)
+		if err := w.sendIfNeeded(obj); err != nil {
+			s.log.WithField("id", id).WithField("object", obj.String()).Error(err)
+		}
 	}
 }
