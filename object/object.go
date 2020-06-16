@@ -65,5 +65,5 @@ func (o Object) String() string {
 		val = "nil"
 	}
 
-	return fmt.Sprintf("{Owner: %s, Key: %v, Value: %s}", o.Meta.Owner, o.Key, val)
+	return fmt.Sprintf("{Key: %v, Value: %s}", o.Key, val)
 }

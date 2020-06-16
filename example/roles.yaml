@@ -1,36 +1,41 @@
 roles:
-  - role: "agent"
+  - name: "agent"
     rules:
-      - type: "action"
-        namespace: "default"
+      - key:
+          type: "action"
+          namespace: "default"
         methods:
           - "set"
           - "delete"
-      - type: world
-        name: "judge"
-        namespace: "default"
+      - key:
+          type: world
+          name: "judge"
+          namespace: "default"
         methods:
           - "get"
           - "find"
           - "watch"
-  - role: "judge"
+  - name: "judge"
     rules:
-      - type: "action"
+      - key:
+          type: "action"
         methods:
           - "get"
           - "watch"
-      - type: "world"
+      - key:
+          type: "world"
         methods:
           - "get"
           - "set"
           - "find"
           - "watch"
           - "delete"
-  - role: "logger"
+  - name: "logger"
     rules:
-      - type: ""
-        name: ""
-        namespace: ""
+      - key:
+          type: ""
+          name: ""
+          namespace: ""
         methods:
           - "get"
           - "set"

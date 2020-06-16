@@ -8,6 +8,7 @@ import (
 
 	"github.com/Gimulator/Gimulator/api"
 	"github.com/Gimulator/Gimulator/auth"
+	"github.com/Gimulator/Gimulator/config"
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/Gimulator/Gimulator/storage"
 	"github.com/sirupsen/logrus"
@@ -50,10 +51,15 @@ func main() {
 
 	storage := storage.NewMemory()
 	simulator := simulator.NewSimulator(storage)
-	auth, err := auth.NewAuth(configPath)
+
+	config, err := config.NewConfig(configPath)
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
+	}
+
+	auth, err := auth.NewAuth(config)
+	if err != nil {
+		panic(err)
 	}
 
 	api := api.NewManager(simulator, auth)

@@ -148,7 +148,9 @@ func (m *Manager) respond(w http.ResponseWriter, obj *object.Object, cli *client
 	case object.MethodSet:
 		err = m.simulator.Set(cli.id, obj)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			//TODO: update api doc
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			// w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusNoContent)
 		}

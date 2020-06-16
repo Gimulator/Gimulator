@@ -9,7 +9,7 @@ import (
 )
 
 type Rule struct {
-	Key     object.Key      `yaml:"key"`
+	Key     *object.Key     `yaml:"key"`
 	Methods []object.Method `yaml:"methods"`
 }
 
@@ -32,6 +32,15 @@ type Config struct {
 }
 
 func NewConfig(path string) (*Config, error) {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if fileInfo.IsDir() {
+		return nil, fmt.Errorf("path must be an address of a file not directory")
+	}
+
 	c := &Config{
 		configPath:  path,
 		idToRole:    make(map[string]string),
@@ -46,6 +55,8 @@ func NewConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	c.postprocess()
+
 	return c, nil
 }
 
@@ -56,8 +67,7 @@ func (c *Config) loadConfig() error {
 	}
 	defer file.Close()
 
-	var config Config
-	if err := yaml.NewDecoder(file).Decode(&config); err != nil {
+	if err := yaml.NewDecoder(file).Decode(c); err != nil {
 		return err
 	}
 
@@ -169,7 +179,7 @@ func (c *Config) GetRole(id string) (string, error) {
 	if role, exists := c.idToRole[id]; exists {
 		return role, nil
 	}
-	return "", fmt.Errorf("id '%s' is not found", id)
+	return "", fmt.Errorf("actor with id=%s does not exist", id)
 }
 
 func (c *Config) GetRules(id string) ([]Rule, error) {
@@ -181,9 +191,9 @@ func (c *Config) GetRules(id string) ([]Rule, error) {
 	return c.roleToRules[role], nil
 }
 
-func (c *Config) DoesIdExist(id string) bool {
+func (c *Config) DoesIdExist(id string) error {
 	if _, exists := c.idToRole[id]; exists {
-		return true
+		return nil
 	}
-	return false
+	return fmt.Errorf("actor with id=%s does not exist", id)
 }
