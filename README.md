@@ -29,11 +29,11 @@ $ git clone https://github.com/Gimulator/Gimulator.git
 
 ```bash
 $ make build
-$ make exec ip="localhost:{port}" config-file="{/path/to/roles-file.yaml}"
+$ GIMULATOR_HOST="localhost:3030" GIMULATOR_ROLES_FILE_PATH="{/path/to/roles-file.yaml}" make exec
 ```
 or you can run it directly with this command:
 ```
-$ make run ip="localhost:{port}" config-file="{/path/to/roles-file.yaml}"
+$ GIMULATOR_HOST="localhost:3030" GIMULATOR_ROLES_FILE_PATH="{/path/to/roles-file.yaml}" make run
 ```
 
 Gimulator is up and running! You can access the API on `localhost:{port}`.
@@ -53,19 +53,25 @@ object:
         name        string
         namespace   string
     value           interface{} # It means any type of data, like JSON or Yaml.
+    meta:
+        creation-time: string # Example: 2020-06-18 18:57:41.975664865 # Time of creating this object in storage
+        owner:         string # Who creates this object
+        method:        string # It is 'set' or 'delete'
 ```
 
 Key is the identifier of objects. Gimulator can find objects based on keys. It just filters all keys to find the key which is requested. You can define your language using keys and the different components of your system can speak to each other with this language, through connecting to Gimulator.
-
+Meta is filled by Gimulator and if you fill it client-side, Gimualtor overwrites it.
 ### Operations
 
 Gimulator supports five operations:
 
- 1. Get: To get an object with a specific key.
+ 1. Get: To get an object with a specific key().
  2. Set: To set an object with a specific key.
  3. Find: To get a list of objects which match with a partial key.
  4. Delete: To delete an object with a specific key.
  5. Watch: To set a new watcher for a specific key to be notified of changes of the objects filtered by that key.
+
+When you want to use `set`, `get`, or `delete`, you should fill all the key's entities(Name, Namespace, Type).
 
 ### Components
 
