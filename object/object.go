@@ -56,13 +56,15 @@ type Meta struct {
 type Object struct {
 	Meta  *Meta
 	Key   *Key
-	Value interface{}
+	Value string
 }
 
 func (o Object) String() string {
-	val := "'...'"
-	if o.Value == nil {
-		val = "nil"
+	val := ""
+	if len(o.Value) > 10 {
+		val = fmt.Sprintf("'%s...'", o.Value[0:10])
+	} else {
+		val = fmt.Sprintf("'%s'", o.Value)
 	}
 
 	return fmt.Sprintf("{Key: %v, Value: %s}", o.Key, val)
