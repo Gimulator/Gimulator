@@ -78,3 +78,25 @@ func TestMatch(t *testing.T) {
 		}
 	}
 }
+
+func TestObjectString(t *testing.T) {
+
+	var tests = []struct {
+		o    Object
+		want string
+	}{
+		{Object{Key: &Key{Type: "Type"}, Value: "Value"}, "{Key: {Type: Type, Namespace: , Name: }, Value: 'Value'}"},
+		{Object{Key: &Key{"t", "ns", "n"}, Value: "thisisatestvalue"}, "{Key: {Type: t, Namespace: ns, Name: n}, Value: 'thisisates...'}"},
+		{Object{}, "{Key: <nil>, Value: ''}"},
+		{Object{Key: &Key{Name: "n"}, Value: ""}, "{Key: {Type: , Namespace: , Name: n}, Value: ''}"},
+	}
+
+	for _, test := range tests {
+
+		got := test.o.String()
+
+		if got != test.want {
+			t.Errorf("got %v, want %v", got, test.want)
+		}
+	}
+}
