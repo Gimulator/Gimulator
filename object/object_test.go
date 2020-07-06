@@ -49,3 +49,32 @@ func TestEqual(t *testing.T) {
 		}
 	}
 }
+
+func TestMatch(t *testing.T) {
+
+	var tests = []struct {
+		key1 Key
+		key2 *Key
+		want bool
+	}{
+		{Key{"Type", "Namespace", "Name"}, &Key{"Type", "Namespace", "Name"}, true},
+		{Key{"", "", ""}, &Key{}, true},
+		{Key{Type: "t"}, &Key{Type: "t"}, true},
+		{Key{"type", "namespace", "name"}, &Key{"Type", "Namespace", "Name"}, false},
+		{Key{"tpe", "namespace", "name"}, &Key{"Type", "Namespace", "Name"}, false},
+		{Key{Type: "t"}, &Key{"t", "a", "b"}, true},
+		{Key{"Type", "Namespace", "Name"}, &Key{Type: "Type"}, false},
+		{Key{}, &Key{}, true},
+		{Key{}, &Key{"a", "b", "c"}, true},
+		{Key{Type: "type"}, &Key{Type: "type", Namespace: "ns"}, true},
+	}
+
+	for _, test := range tests {
+
+		got := test.key1.Match(test.key2)
+
+		if got != test.want {
+			t.Errorf("got %v, want %v", got, test.want)
+		}
+	}
+}
