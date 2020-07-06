@@ -38,6 +38,8 @@ func TestEqual(t *testing.T) {
 		{Key{Type: "t"}, &Key{Type: "t"}, true},
 		{Key{"type", "namespace", "name"}, &Key{"Type", "Namespace", "Name"}, false},
 		{Key{"tpe", "namespace", "name"}, &Key{"Type", "Namespace", "Name"}, false},
+		{Key{"t", "ns", "name"}, &Key{"t", "Namespace", "Name"}, false},
+		{Key{"t", "ns", "n"}, &Key{"t", "ns", "Name"}, false},
 	}
 
 	for _, test := range tests {
@@ -67,7 +69,8 @@ func TestMatch(t *testing.T) {
 		{Key{}, &Key{}, true},
 		{Key{}, &Key{"a", "b", "c"}, true},
 		{Key{Type: "type"}, &Key{Type: "type", Namespace: "ns"}, true},
-	}
+		{Key{"Type", "ns", "n"}, &Key{"Type", "ns", "name"}, false},
+	}	
 
 	for _, test := range tests {
 
