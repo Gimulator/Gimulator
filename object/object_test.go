@@ -41,8 +41,8 @@ func TestKeyStringer(t *testing.T) {
 
 		if got != test.want {
 			t.Errorf(LogFailed(got, test.want, ballotX))
-		}else{
-			t.Logf(LogApproved(test.want, checkMark))	
+		} else {
+			t.Logf(LogApproved(test.want, checkMark))
 		}
 	}
 }
@@ -70,8 +70,8 @@ func TestEqual(t *testing.T) {
 
 		if got != test.want {
 			t.Errorf(LogFailed(got, test.want, ballotX))
-		}else{
-			t.Logf(LogApproved(test.want, checkMark))	
+		} else {
+			t.Logf(LogApproved(test.want, checkMark))
 		}
 	}
 }
@@ -92,7 +92,7 @@ func TestMatch(t *testing.T) {
 		{KeyTypeNamespace, &KeyOnlyName, false},
 		{KeyComplete, &Key{"T", "Ns", "N"}, false},
 		{KeyComplete, &KeyOnlyType, false},
-	}	
+	}
 
 	t.Log("Given the needed to test mehod Match of Key type.")
 
@@ -130,19 +130,19 @@ func TestObjectStringer(t *testing.T) {
 
 		if got != test.want {
 			t.Errorf(LogFailed(got, test.want, ballotX))
-		}else{
+		} else {
 			t.Logf(LogApproved(test.want, checkMark))
 		}
 	}
 }
 
 var (
-	KeyComplete = Key{"t", "ns", "n"}
-	KeyEmpty = Key{}
-	KeyOnlyType = Key{Type: "t"}
-	KeyOnlyNamespace = Key{Namespace : "ns"}
-	KeyOnlyName = Key{Name : "n"}
-	KeyTypeNamespace = Key{Type : "t", Namespace : "ns"}
-	KeyTypeName = Key{Type : "t", Name : "n"}
-	KeyNamespaceName = Key{Namespace : "ns", Name : "n"}
+	KeyComplete      = Key{"t", "ns", "n"}
+	KeyEmpty         = Key{}
+	KeyOnlyType      = Key{Type: "t"}
+	KeyOnlyNamespace = Key{Namespace: "ns"}
+	KeyOnlyName      = Key{Name: "n"}
+	KeyTypeNamespace = Key{Type: "t", Namespace: "ns"}
+	KeyTypeName      = Key{Type: "t", Name: "n"}
+	KeyNamespaceName = Key{Namespace: "ns", Name: "n"}
 )
