@@ -173,3 +173,47 @@ func TestFind(t *testing.T) {
 		}
 	}
 }
+
+func TestWatch(t *testing.T) {
+	strg := storage.NewMemory()
+	strg.Set(&ObjectKComplete)
+	s := &Simulator{
+		Mutex:    sync.Mutex{},
+		spreader: NewSpreader(),
+		storage:  strg,
+	}
+	s.spreader.watchers["id"] = watcher{
+		keys: []*object.Key{&KeyComplete},
+		ch:   make(chan *object.Object),
+	}
+
+	tempch := make(chan *object.Object)
+	tests := []struct {
+		id          string
+		key         *object.Key
+		ch          chan *object.Object
+		wantWatcher watcher
+		wantErr     error
+	}{
+		{"id", &KeyOnlyType, nil, s.spreader.watchers["id"], nil},
+		{"id1", &KeyComplete, tempch, watcher{[]*object.Key{&KeyComplete}, tempch}, nil},
+		{"id2", &KeyComplete, nil, watcher{}, fmt.Errorf("error")},
+	}
+
+	t.Logf("Given the need to test Watch method of Simulator type.")
+
+	for _, test := range tests {
+		t.Logf("\tWhen checking the value \"%v, %v\"", test.id, test.key)
+
+		gotErr := s.Watch(test.id, test.key, test.ch)
+		gotWatcher := s.spreader.watchers[test.id]
+
+		if reflect.DeepEqual(gotWatcher, test.wantWatcher) && reflect.TypeOf(gotErr) == reflect.TypeOf(test.wantErr) {
+			t.Logf(LogApproved(test.wantErr, checkMark))
+		} else if reflect.TypeOf(gotErr) != reflect.TypeOf(test.wantErr) {
+			t.Errorf(LogFailed(gotErr, test.wantErr, ballotX))
+		} else {
+			t.Errorf(LogFailed(gotWatcher, test.wantWatcher, ballotX))
+		}
+	}
+}
