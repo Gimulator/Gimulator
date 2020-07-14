@@ -97,6 +97,40 @@ func TestSendIfNeeded(t *testing.T) {
 }
 */
 
+func TestAddWatch(t *testing.T) {
+	w, _ := newWatcher(make(chan *object.Object))
+	w.keys = []*object.Key{&KeyComplete}
+
+	var tests = []struct{
+		key *object.Key
+	}{
+		{&KeyComplete},
+		{&KeyOnlyType},
+	}
+
+	t.Logf("Given the need to test addWatch method of watcher type.")
+
+	for _, test := range tests{
+		t.Logf("\tWhen checking the value \"%v\"", test.key)
+
+		w.addWatch(test.key)
+
+		b := false
+		for _, k := range w.keys {
+			b = true
+			if k.Equal(test.key){
+				t.Logf(LogApproved(test.key, checkMark))
+				b = false
+				break
+			}
+		}
+		if b == true {
+			t.Errorf(LogFailed("Key is not in the watcher value!", test.key, checkMark))
+		}
+	}
+
+}
+
 var (
 	KeyComplete          = object.Key{"t", "ns", "n"}
 	KeyEmpty             = object.Key{}
