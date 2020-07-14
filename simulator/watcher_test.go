@@ -44,64 +44,85 @@ func TestNewWatcher(t *testing.T) {
 	}
 }
 
-// INCOMPLETE
-/*
 func TestSendIfNeeded(t *testing.T) {
 
-	var tests = []struct {
-		obj     *object.Object
-		want error
-	}{
-		{&ObjectKEmpty, nil},
-		{&ObjectKOnlyName, nil},
-		{&ObjectKComplete, nil},
-		{&ObjectKNamespaceName, nil},
-	}
+	t.Run("Call sendIfNeeded() only one time", func(t *testing.T) {
 
-	t.Logf("Given the need to test sendIfNeeded method of watcher type.")
-
-	for _, test := range tests {
-		t.Logf("\tWhen checking the value \"%v\"", test.obj)
-
-		ch := make(chan *object.Object)
-		w, _ := newWatcher(ch)
-		w.keys = []*object.Key{
-			&KeyNamespaceName,
-			&KeyComplete,
+		var tests = []struct {
+			obj  *object.Object
+			want error
+		}{
+			{&ObjectKEmpty, nil},
+			{&ObjectKOnlyName, nil},
+			{&ObjectKComplete, nil},
+			{&ObjectKNamespaceName, nil},
 		}
 
-		var(
-			got error
-			wg sync.WaitGroup
-		)
+		t.Logf("Given the need to test sendIfNeeded method of watcher type.")
 
-		wg.Add(1)
-		go func(){
+		for _, test := range tests {
+			t.Logf("\tWhen checking the value \"%v\"", test.obj)
+
+			w, _ := newWatcher(make(chan *object.Object, 1))
+			w.keys = []*object.Key{
+				&KeyNamespaceName,
+				&KeyComplete,
+			}
+
+			got := w.sendIfNeeded(test.obj)
+			go func() {
+				<-w.ch
+			}()
+
+			if reflect.DeepEqual(got, test.want) {
+				t.Logf(LogApproved(test.want, checkMark))
+			} else {
+				t.Errorf(LogFailed(got, test.want, ballotX))
+			}
+		}
+	})
+
+	t.Run("Call sendIfNeeded() more than one time", func(t *testing.T) {
+
+		var tests = []struct {
+			obj  *object.Object
+			want error
+		}{
+			{&ObjectKEmpty, nil},
+			{&ObjectKOnlyName, nil},
+			{&ObjectKComplete, fmt.Errorf("could not write to object")},
+		}
+
+		for _, test := range tests {
+			t.Logf("\tWhen checking the value \"%v\"", test.obj)
+
+			w, _ := newWatcher(make(chan *object.Object, 1))
+			w.keys = []*object.Key{
+				&KeyComplete,
+			}
+
+			got := w.sendIfNeeded(test.obj)
 			got = w.sendIfNeeded(test.obj)
-			defer wg.Done()
-		}()
-		go func(){
-			<- w.ch
-		}()
-		wg.Wait()
+			go func() {
+				<-w.ch
+			}()
 
-		if reflect.DeepEqual(got, test.want){
-			t.Logf(LogApproved(test.want, checkMark))
-		} else {
-			t.Errorf(LogFailed(got, test.want, ballotX))
+			if reflect.DeepEqual(got, test.want) {
+				t.Logf(LogApproved(test.want, checkMark))
+			} else {
+				t.Errorf(LogFailed(got, test.want, ballotX))
+			}
 		}
 
-		close(ch)
-	}
+	})
 
 }
-*/
 
 func TestAddWatch(t *testing.T) {
 	w, _ := newWatcher(make(chan *object.Object))
 	w.keys = []*object.Key{&KeyComplete}
 
-	var tests = []struct{
+	var tests = []struct {
 		key *object.Key
 	}{
 		{&KeyComplete},
@@ -110,7 +131,7 @@ func TestAddWatch(t *testing.T) {
 
 	t.Logf("Given the need to test addWatch method of watcher type.")
 
-	for _, test := range tests{
+	for _, test := range tests {
 		t.Logf("\tWhen checking the value \"%v\"", test.key)
 
 		w.addWatch(test.key)
@@ -118,7 +139,7 @@ func TestAddWatch(t *testing.T) {
 		b := false
 		for _, k := range w.keys {
 			b = true
-			if k.Equal(test.key){
+			if k.Equal(test.key) {
 				t.Logf(LogApproved(test.key, checkMark))
 				b = false
 				break
