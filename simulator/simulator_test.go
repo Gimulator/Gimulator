@@ -101,7 +101,42 @@ func TestSet(t *testing.T) {
 
 }
 
+func TestDelete(t *testing.T) {
+	strg := storage.NewMemory()
+	strg.Set(&ObjectKComplete)
+	s := &Simulator{
+		Mutex:    sync.Mutex{},
+		spreader: NewSpreader(),
+		storage:  strg,
+	}
 
+	tests := []struct{
+		id string
+		key *object.Key
+		wantObj *object.Object
+		wantErr error
+	}{
+		{"id1", &KeyComplete, nil, nil},
+		{"id2", &KeyEmpty, nil, fmt.Errorf("error")},
+	}
+
+	t.Logf("Given the need to test Delete method of Simulator type.")
+
+	for _, test := range tests {
+		t.Logf("\tWhen checking the value \"%v, %v\"", test.key, test.id)
+
+		gotErr := s.Delete(test.id, test.key)
+		gotObj, _ := s.storage.Get(test.key)
+
+		if reflect.DeepEqual(gotObj, test.wantObj) && reflect.TypeOf(gotErr) == reflect.TypeOf(test.wantErr) {
+			t.Logf(LogApproved(test.wantErr, checkMark))
+		} else if reflect.TypeOf(gotErr) != reflect.TypeOf(test.wantErr) {
+			t.Errorf(LogFailed(gotErr, test.wantErr, ballotX))
+		} else {
+			t.Errorf(LogFailed(gotObj, test.wantObj, ballotX))
+		}
+	}
+}
 
 
 
