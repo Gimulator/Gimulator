@@ -72,9 +72,9 @@ func TestSet(t *testing.T) {
 	}
 
 	tests := []struct {
-		id string
-		obj *object.Object
-		key *object.Key
+		id      string
+		obj     *object.Object
+		key     *object.Key
 		wantObj *object.Object
 		wantErr error
 	}{
@@ -110,9 +110,9 @@ func TestDelete(t *testing.T) {
 		storage:  strg,
 	}
 
-	tests := []struct{
-		id string
-		key *object.Key
+	tests := []struct {
+		id      string
+		key     *object.Key
 		wantObj *object.Object
 		wantErr error
 	}{
@@ -138,30 +138,38 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+func TestFind(t *testing.T) {
+	strg := storage.NewMemory()
+	strg.Set(&ObjectKComplete)
+	s := &Simulator{
+		Mutex:    sync.Mutex{},
+		spreader: NewSpreader(),
+		storage:  strg,
+	}
 
+	tests := []struct {
+		id      string
+		key     *object.Key
+		wantObj []*object.Object
+		wantErr error
+	}{
+		{"id1", &KeyComplete, []*object.Object{&ObjectKComplete}, nil},
+		{"id2", &KeyEmpty, []*object.Object{&ObjectKComplete}, nil},
+	}
 
+	t.Logf("Given the need to test Find method of Simulator type.")
 
+	for _, test := range tests {
+		t.Logf("\tWhen checking the value \"%v, %v\"", test.id, test.key)
 
+		gotObj, gotErr := s.Find(test.id, test.key)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+		if reflect.DeepEqual(gotObj, test.wantObj) && reflect.TypeOf(gotErr) == reflect.TypeOf(test.wantErr) {
+			t.Logf(LogApproved(test.wantErr, checkMark))
+		} else if reflect.TypeOf(gotErr) != reflect.TypeOf(test.wantErr) {
+			t.Errorf(LogFailed(gotErr, test.wantErr, ballotX))
+		} else {
+			t.Errorf(LogFailed(gotObj, test.wantObj, ballotX))
+		}
+	}
+}
