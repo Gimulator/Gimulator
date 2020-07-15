@@ -13,9 +13,7 @@ func TestNewSpreader(t *testing.T) {
 		watchers: make(map[string]watcher),
 		log:      logrus.WithField("entity", "spreader"),
 	}
-
 	t.Logf("Given the need to test NewSpreader function of watcher type.")
-
 	got := NewSpreader()
 
 	if reflect.DeepEqual(got, want) {
@@ -30,11 +28,10 @@ func TestAddWatcher(t *testing.T) {
 		watchers: make(map[string]watcher),
 		log:      logrus.WithField("entity", "spreader"),
 	}
-	s.watchers["test"] = watcher{
+	s.watchers[id] = watcher{
 		keys: []*object.Key{&KeyComplete, &KeyOnlyType},
 		ch:   make(chan *object.Object),
 	}
-
 	testCh := make(chan *object.Object)
 	var tests = []struct {
 		id          string
@@ -43,23 +40,21 @@ func TestAddWatcher(t *testing.T) {
 		wantErr     error
 		wantWatcher watcher
 	}{
-		{"test", &KeyOnlyName, nil, nil, s.watchers["test"]},
-		{"test", &KeyOnlyName, make(chan *object.Object), nil, s.watchers["test"]},
-		{"test1", &KeyOnlyType, nil, fmt.Errorf("nil channel for creating new watcher"), watcher{}},
-		{"test2", &KeyOnlyType, testCh, nil, watcher{[]*object.Key{&KeyOnlyType}, testCh}},
+		{id, &KeyOnlyName, nil, nil, s.watchers[id]},
+		{id, &KeyOnlyName, make(chan *object.Object), nil, s.watchers[id]},
+		{id1, &KeyOnlyType, nil, fmt.Errorf("error"), watcher{}},
+		{id2, &KeyOnlyType, testCh, nil, watcher{[]*object.Key{&KeyOnlyType}, testCh}},
 	}
-
 	t.Logf("Given the need to test addWatcher method of spreader type.")
 
 	for _, test := range tests {
-		t.Logf("\tWhen checking the value \"%v, %v, %v\"", test.id, test.key, test.ch)
-
+		t.Logf("\tWhen checking the value \"%v, %v, channel: %v\"", test.id, test.key, test.ch)
 		gotErr := s.AddWatcher(test.id, test.key, test.ch)
 		gotWatcher := s.watchers[test.id]
 
-		if reflect.DeepEqual(gotErr, test.wantErr) && reflect.DeepEqual(gotWatcher, test.wantWatcher) {
+		if reflect.TypeOf(gotErr) == reflect.TypeOf(test.wantErr) && reflect.DeepEqual(gotWatcher, test.wantWatcher) {
 			t.Logf(LogApproved(test.wantWatcher, checkMark))
-		} else if !reflect.DeepEqual(gotErr, test.wantErr) {
+		} else if reflect.TypeOf(gotErr) != reflect.TypeOf(test.wantErr) {
 			t.Errorf(LogFailed(gotErr, test.wantErr, ballotX))
 		} else {
 			t.Errorf(LogFailed(gotWatcher, test.wantWatcher, ballotX))
