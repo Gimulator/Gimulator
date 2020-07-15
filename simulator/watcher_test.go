@@ -154,6 +154,8 @@ func TestAddWatch(t *testing.T) {
 
 var (
 	KeyComplete          = object.Key{"t", "ns", "n"}
+	KeyComplete2 = object.Key{"t2", "ns2", "n2"}
+	KeyComplete3 = object.Key{"t3", "ns3", "n3"}
 	KeyEmpty             = object.Key{}
 	KeyOnlyType          = object.Key{Type: "t"}
 	KeyOnlyNamespace     = object.Key{Namespace: "ns"}
@@ -162,6 +164,8 @@ var (
 	KeyTypeName          = object.Key{Type: "t", Name: "n"}
 	KeyNamespaceName     = object.Key{Namespace: "ns", Name: "n"}
 	ObjectKComplete      = object.Object{Key: &KeyComplete}
+	ObjectKComplete2 = object.Object{Key: &KeyComplete2}
+	ObjectKComplete3 = object.Object{Key: &KeyComplete3}
 	ObjectKEmpty         = object.Object{Key: &KeyEmpty}
 	ObjectKOnlyType      = object.Object{Key: &KeyOnlyType}
 	ObjectKOnlyNamespace = object.Object{Key: &KeyOnlyNamespace}

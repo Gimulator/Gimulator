@@ -2,6 +2,7 @@ package simulator
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/Gimulator/Gimulator/object"
 	"github.com/Gimulator/Gimulator/storage"
 	"reflect"
@@ -10,13 +11,8 @@ import (
 )
 
 func TestNewSimulator(t *testing.T) {
-	strg := storage.NewMemory()
-	want := &Simulator{
-		Mutex:    sync.Mutex{},
-		spreader: NewSpreader(),
-		storage:  strg,
-	}
-
+	strg := makeTestStorage()
+	want := makeTestSimulator(strg)
 	got := NewSimulator(strg)
 
 	if reflect.DeepEqual(got, want) {
@@ -27,24 +23,17 @@ func TestNewSimulator(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	strg := storage.NewMemory()
-	strg.Set(&ObjectKComplete)
-	s := &Simulator{
-		Mutex:    sync.Mutex{},
-		spreader: NewSpreader(),
-		storage:  strg,
-	}
-
+	s := makeTestSimulator(makeTestStorage(&ObjectKComplete))
 	tests := []struct {
-		key     *object.Key
 		id      string
+		key     *object.Key
 		wantObj *object.Object
 		wantErr error
 	}{
-		{&KeyComplete, "test id", &ObjectKComplete, nil},
-		{&KeyEmpty, "another id", nil, fmt.Errorf("error")},
+		{id, &KeyComplete, &ObjectKComplete, nil},
+		{id1, &KeyEmpty, nil, fmt.Errorf("error")},
+		{id2, &KeyComplete2, nil, fmt.Errorf("error")},
 	}
-
 	t.Logf("Given the need to test Get method of Simulator type.")
 
 	for _, test := range tests {
@@ -63,14 +52,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
-	strg := storage.NewMemory()
-	strg.Set(&ObjectKComplete)
-	s := &Simulator{
-		Mutex:    sync.Mutex{},
-		spreader: NewSpreader(),
-		storage:  strg,
-	}
-
+	s := makeTestSimulator(makeTestStorage(&ObjectKComplete))
 	tests := []struct {
 		id      string
 		obj     *object.Object
@@ -78,15 +60,13 @@ func TestSet(t *testing.T) {
 		wantObj *object.Object
 		wantErr error
 	}{
-		{"id1", &ObjectKComplete, &KeyComplete, &ObjectKComplete, nil},
-		{"id2", &ObjectKEmpty, &KeyEmpty, nil, fmt.Errorf("error")},
+		{id1, &ObjectKComplete, &KeyComplete, &ObjectKComplete, nil},
+		{id2, &ObjectKEmpty, &KeyEmpty, nil, fmt.Errorf("error")},
 	}
-
 	t.Logf("Given the need to test Set method of Simulator type.")
 
 	for _, test := range tests {
-		t.Logf("\tWhen checking the value \"%v, %v\"", test.key, test.id)
-
+		t.Logf("\tWhen checking the value \"%v, %v\"", test.id, test.key)
 		gotErr := s.Set(test.id, test.obj)
 		gotObj, _ := s.storage.Get(test.key)
 
@@ -102,28 +82,21 @@ func TestSet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	strg := storage.NewMemory()
-	strg.Set(&ObjectKComplete)
-	s := &Simulator{
-		Mutex:    sync.Mutex{},
-		spreader: NewSpreader(),
-		storage:  strg,
-	}
-
+	s := makeTestSimulator(makeTestStorage(&ObjectKComplete))
 	tests := []struct {
 		id      string
 		key     *object.Key
 		wantObj *object.Object
 		wantErr error
 	}{
-		{"id1", &KeyComplete, nil, nil},
-		{"id2", &KeyEmpty, nil, fmt.Errorf("error")},
+		{id, &KeyComplete2, nil, fmt.Errorf("error")},
+		{id1, &KeyComplete, nil, nil},
+		{id2, &KeyEmpty, nil, fmt.Errorf("error")},
 	}
-
 	t.Logf("Given the need to test Delete method of Simulator type.")
 
 	for _, test := range tests {
-		t.Logf("\tWhen checking the value \"%v, %v\"", test.key, test.id)
+		t.Logf("\tWhen checking the value \"%v, %v\"", test.id, test.key)
 
 		gotErr := s.Delete(test.id, test.key)
 		gotObj, _ := s.storage.Get(test.key)
@@ -139,54 +112,51 @@ func TestDelete(t *testing.T) {
 }
 
 func TestFind(t *testing.T) {
-	strg := storage.NewMemory()
-	strg.Set(&ObjectKComplete)
-	s := &Simulator{
-		Mutex:    sync.Mutex{},
-		spreader: NewSpreader(),
-		storage:  strg,
-	}
-
+	s := makeTestSimulator(makeTestStorage(&ObjectKComplete, &ObjectKComplete2))
 	tests := []struct {
 		id      string
 		key     *object.Key
 		wantObj []*object.Object
 		wantErr error
 	}{
-		{"id1", &KeyComplete, []*object.Object{&ObjectKComplete}, nil},
-		{"id2", &KeyEmpty, []*object.Object{&ObjectKComplete}, nil},
+		{id, &KeyComplete3, make([]*object.Object, 0), nil},
+		{id1, &KeyComplete, []*object.Object{&ObjectKComplete}, nil},
+		{id2, &KeyEmpty, []*object.Object{&ObjectKComplete2, &ObjectKComplete}, nil},
 	}
-
 	t.Logf("Given the need to test Find method of Simulator type.")
 
 	for _, test := range tests {
 		t.Logf("\tWhen checking the value \"%v, %v\"", test.id, test.key)
-
 		gotObj, gotErr := s.Find(test.id, test.key)
 
-		if reflect.DeepEqual(gotObj, test.wantObj) && reflect.TypeOf(gotErr) == reflect.TypeOf(test.wantErr) {
+		flag := false
+		for _, v := range gotObj{
+			flag = true
+			for _,v2 := range test.wantObj{
+				if reflect.DeepEqual(v, v2){
+					flag = false
+					break
+				}
+			}
+			if flag {
+				t.Errorf(LogFailed(gotObj, test.wantObj, ballotX))	
+				break
+			}
+		}
+		if reflect.TypeOf(gotErr) == reflect.TypeOf(test.wantErr) {
 			t.Logf(LogApproved(test.wantErr, checkMark))
-		} else if reflect.TypeOf(gotErr) != reflect.TypeOf(test.wantErr) {
+		} else  {
 			t.Errorf(LogFailed(gotErr, test.wantErr, ballotX))
-		} else {
-			t.Errorf(LogFailed(gotObj, test.wantObj, ballotX))
 		}
 	}
 }
 
 func TestWatch(t *testing.T) {
-	strg := storage.NewMemory()
-	strg.Set(&ObjectKComplete)
-	s := &Simulator{
-		Mutex:    sync.Mutex{},
-		spreader: NewSpreader(),
-		storage:  strg,
-	}
-	s.spreader.watchers["id"] = watcher{
+	s := makeTestSimulator(makeTestStorage(&ObjectKComplete))
+	s.spreader.watchers[id] = watcher{
 		keys: []*object.Key{&KeyComplete},
 		ch:   make(chan *object.Object),
 	}
-
 	tempch := make(chan *object.Object)
 	tests := []struct {
 		id          string
@@ -195,16 +165,14 @@ func TestWatch(t *testing.T) {
 		wantWatcher watcher
 		wantErr     error
 	}{
-		{"id", &KeyOnlyType, nil, s.spreader.watchers["id"], nil},
-		{"id1", &KeyComplete, tempch, watcher{[]*object.Key{&KeyComplete}, tempch}, nil},
-		{"id2", &KeyComplete, nil, watcher{}, fmt.Errorf("error")},
+		{id, &KeyOnlyType, nil, s.spreader.watchers[id], nil},
+		{id1, &KeyComplete, tempch, watcher{[]*object.Key{&KeyComplete}, tempch}, nil},
+		{id2, &KeyComplete, nil, watcher{}, fmt.Errorf("error")},
 	}
-
 	t.Logf("Given the need to test Watch method of Simulator type.")
 
 	for _, test := range tests {
 		t.Logf("\tWhen checking the value \"%v, %v\"", test.id, test.key)
-
 		gotErr := s.Watch(test.id, test.key, test.ch)
 		gotWatcher := s.spreader.watchers[test.id]
 
@@ -217,3 +185,29 @@ func TestWatch(t *testing.T) {
 		}
 	}
 }
+
+func makeTestSimulator(strg *storage.Memory) *Simulator{
+	sp := &spreader{
+		watchers: make(map[string]watcher),
+		log:      logrus.WithField("entity", "spreader"),
+	}
+	return &Simulator{
+		Mutex:    sync.Mutex{},
+		spreader: sp,
+		storage:  strg,
+	}
+}
+
+func makeTestStorage(objs ...*object.Object) *storage.Memory {
+	strg := storage.NewMemory()
+	for _, obj := range objs {
+		strg.Set(obj)
+	}
+	return strg
+}
+
+var (
+	id = "id"
+	id1 = "id1"
+	id2 = "id2"
+)
