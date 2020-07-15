@@ -26,14 +26,12 @@ func TestNewWatcher(t *testing.T) {
 		wantErr     error
 	}{
 		{nil, watcher{}, fmt.Errorf("nil channel for creating new watcher")},
-		{tempCh, watcher{make([]*object.Key, 0), tempCh}, nil},
+		{tempCh, makeTestWatcher(tempCh), nil},
 	}
-
 	t.Logf("Given the need to test newWatcher method of watcher type.")
 
 	for _, test := range tests {
 		t.Logf("\tWhen checking the value \"%v\"", test.ch)
-
 		gotWatcher, gotErr := newWatcher(test.ch)
 
 		if !reflect.DeepEqual(gotErr, test.wantErr) || !reflect.DeepEqual(gotWatcher, test.wantWatcher) {
@@ -45,6 +43,7 @@ func TestNewWatcher(t *testing.T) {
 }
 
 func TestSendIfNeeded(t *testing.T) {
+	t.Logf("Given the need to test sendIfNeeded method of watcher type.")
 
 	t.Run("Call sendIfNeeded() only one time", func(t *testing.T) {
 
@@ -58,18 +57,11 @@ func TestSendIfNeeded(t *testing.T) {
 			{&ObjectKNamespaceName, nil},
 		}
 
-		t.Logf("Given the need to test sendIfNeeded method of watcher type.")
-
 		for _, test := range tests {
 			t.Logf("\tWhen checking the value \"%v\"", test.obj)
-
-			w, _ := newWatcher(make(chan *object.Object, 1))
-			w.keys = []*object.Key{
-				&KeyNamespaceName,
-				&KeyComplete,
-			}
-
+			w := makeTestWatcher(make(chan *object.Object, 1), &KeyNamespaceName, &KeyComplete)
 			got := w.sendIfNeeded(test.obj)
+
 			go func() {
 				<-w.ch
 			}()
@@ -95,11 +87,7 @@ func TestSendIfNeeded(t *testing.T) {
 
 		for _, test := range tests {
 			t.Logf("\tWhen checking the value \"%v\"", test.obj)
-
-			w, _ := newWatcher(make(chan *object.Object, 1))
-			w.keys = []*object.Key{
-				&KeyComplete,
-			}
+			w := makeTestWatcher(make(chan *object.Object, 1), &KeyComplete)
 
 			got := w.sendIfNeeded(test.obj)
 			got = w.sendIfNeeded(test.obj)
@@ -119,43 +107,49 @@ func TestSendIfNeeded(t *testing.T) {
 }
 
 func TestAddWatch(t *testing.T) {
-	w, _ := newWatcher(make(chan *object.Object))
-	w.keys = []*object.Key{&KeyComplete}
-
+	w := makeTestWatcher(make(chan *object.Object), &KeyComplete)
 	var tests = []struct {
 		key *object.Key
 	}{
 		{&KeyComplete},
 		{&KeyOnlyType},
 	}
-
 	t.Logf("Given the need to test addWatch method of watcher type.")
 
 	for _, test := range tests {
 		t.Logf("\tWhen checking the value \"%v\"", test.key)
-
 		w.addWatch(test.key)
 
 		b := false
 		for _, k := range w.keys {
-			b = true
-			if k.Equal(test.key) {
+			if reflect.DeepEqual(k, test.key) {
 				t.Logf(LogApproved(test.key, checkMark))
-				b = false
+				b = true
 				break
 			}
 		}
-		if b == true {
+		if !b {
 			t.Errorf(LogFailed("Key is not in the watcher value!", test.key, checkMark))
 		}
 	}
 
 }
 
+func makeTestWatcher(ch chan *object.Object, keys ...*object.Key) watcher {
+	w := watcher{
+		keys: make([]*object.Key, 0),
+		ch:   ch,
+	}
+	for _, k := range keys {
+		w.keys = append(w.keys, k)
+	}
+	return w
+}
+
 var (
 	KeyComplete          = object.Key{"t", "ns", "n"}
-	KeyComplete2 = object.Key{"t2", "ns2", "n2"}
-	KeyComplete3 = object.Key{"t3", "ns3", "n3"}
+	KeyComplete2         = object.Key{"t2", "ns2", "n2"}
+	KeyComplete3         = object.Key{"t3", "ns3", "n3"}
 	KeyEmpty             = object.Key{}
 	KeyOnlyType          = object.Key{Type: "t"}
 	KeyOnlyNamespace     = object.Key{Namespace: "ns"}
@@ -164,8 +158,8 @@ var (
 	KeyTypeName          = object.Key{Type: "t", Name: "n"}
 	KeyNamespaceName     = object.Key{Namespace: "ns", Name: "n"}
 	ObjectKComplete      = object.Object{Key: &KeyComplete}
-	ObjectKComplete2 = object.Object{Key: &KeyComplete2}
-	ObjectKComplete3 = object.Object{Key: &KeyComplete3}
+	ObjectKComplete2     = object.Object{Key: &KeyComplete2}
+	ObjectKComplete3     = object.Object{Key: &KeyComplete3}
 	ObjectKEmpty         = object.Object{Key: &KeyEmpty}
 	ObjectKOnlyType      = object.Object{Key: &KeyOnlyType}
 	ObjectKOnlyNamespace = object.Object{Key: &KeyOnlyNamespace}

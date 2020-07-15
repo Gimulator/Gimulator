@@ -2,9 +2,9 @@ package simulator
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"github.com/Gimulator/Gimulator/object"
 	"github.com/Gimulator/Gimulator/storage"
+	"github.com/sirupsen/logrus"
 	"reflect"
 	"sync"
 	"testing"
@@ -130,22 +130,22 @@ func TestFind(t *testing.T) {
 		gotObj, gotErr := s.Find(test.id, test.key)
 
 		flag := false
-		for _, v := range gotObj{
+		for _, v := range gotObj {
 			flag = true
-			for _,v2 := range test.wantObj{
-				if reflect.DeepEqual(v, v2){
+			for _, v2 := range test.wantObj {
+				if reflect.DeepEqual(v, v2) {
 					flag = false
 					break
 				}
 			}
 			if flag {
-				t.Errorf(LogFailed(gotObj, test.wantObj, ballotX))	
+				t.Errorf(LogFailed(gotObj, test.wantObj, ballotX))
 				break
 			}
 		}
 		if reflect.TypeOf(gotErr) == reflect.TypeOf(test.wantErr) {
 			t.Logf(LogApproved(test.wantErr, checkMark))
-		} else  {
+		} else {
 			t.Errorf(LogFailed(gotErr, test.wantErr, ballotX))
 		}
 	}
@@ -186,7 +186,7 @@ func TestWatch(t *testing.T) {
 	}
 }
 
-func makeTestSimulator(strg *storage.Memory) *Simulator{
+func makeTestSimulator(strg *storage.Memory) *Simulator {
 	sp := &spreader{
 		watchers: make(map[string]watcher),
 		log:      logrus.WithField("entity", "spreader"),
@@ -207,7 +207,7 @@ func makeTestStorage(objs ...*object.Object) *storage.Memory {
 }
 
 var (
-	id = "id"
+	id  = "id"
 	id1 = "id1"
 	id2 = "id2"
 )
