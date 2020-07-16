@@ -20,17 +20,30 @@ func LogFailed(got, want interface{}, ballotX string) string {
 
 func TestNewConfig(t *testing.T) {
 	t.Logf("Given the need to test loadConfig function.")
-	t.Logf("\tWhen checking the value \"%v\"", configPath)
-	wantConf := config1
-	gotConf, gotErr := NewConfig(configPath)
-
-	if gotErr != nil {
-		t.Errorf(LogFailed(gotErr, wantConf, ballotX))
-	} else if reflect.DeepEqual(gotConf, wantConf) {
-		t.Logf(LogApproved(wantConf, checkMark))
-	} else {
-		t.Errorf(LogFailed(gotConf, wantConf, ballotX))
+	var tests = []struct {
+		path     string
+		wantConf *Config
+		wantErr  error
+	}{
+		{configPath, config1, nil},
+		{"wrongPath", nil, fmt.Errorf("stat wrongPath: no such file or directory")},
+		{"configExamples", nil, fmt.Errorf("error")},
+		{configPathDuplicateActors, nil, fmt.Errorf("error")},
 	}
+
+	for _, test := range tests {
+		t.Logf("\tWhen checking the value \"%v\"", test.path)
+		gotConf, gotErr := NewConfig(test.path)
+
+		if (reflect.TypeOf(gotErr) == reflect.TypeOf(test.wantErr) || reflect.DeepEqual(test.wantErr.Error(), gotErr.Error())) && reflect.DeepEqual(gotConf, test.wantConf){
+			t.Logf(LogApproved(test.wantConf, checkMark))
+		} else if !reflect.DeepEqual(gotConf, test.wantConf) {
+			t.Errorf(LogFailed(gotConf, test.wantConf, ballotX))
+		} else {
+			t.Errorf(LogFailed(gotErr, test.wantErr, ballotX))
+		}
+	}
+
 }
 
 func TestLoadConfig(t *testing.T) {
