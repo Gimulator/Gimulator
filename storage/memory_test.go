@@ -43,7 +43,7 @@ func TestValidateKey(t *testing.T) {
 
 		got := m.validateKey(test.key)
 
-		if reflect.DeepEqual(got, test.want) {
+		if reflect.TypeOf(got) == reflect.TypeOf(test.want) {
 			t.Logf(LogApproved(test.want, checkMark))
 		}
 	}
