@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"github.com/Gimulator/Gimulator/object"
+	"reflect"
 	"testing"
 )
 
@@ -26,13 +27,13 @@ func TestValidateKey(t *testing.T) {
 		want error
 	}{
 		{&KeyComplete, nil},
-		{&KeyEmpty, fmt.Errorf("invalid key with empty Name")},
-		{&KeyOnlyType, fmt.Errorf("invalid key with empty Name")},
-		{&KeyOnlyNamespace, fmt.Errorf("invalid key with empty Name")},
-		{&KeyOnlyName, fmt.Errorf("invalid key with empty Namespace")},
-		{&KeyTypeNamespace, fmt.Errorf("invalid key with empty Name")},
-		{&KeyTypeName, fmt.Errorf("invalid key with empty Namespace")},
-		{&KeyNamespaceName, fmt.Errorf("invalid key with empty Type")},
+		{&KeyEmpty, fmt.Errorf("error")},
+		{&KeyOnlyType, fmt.Errorf("error")},
+		{&KeyOnlyNamespace, fmt.Errorf("error")},
+		{&KeyOnlyName, fmt.Errorf("error")},
+		{&KeyTypeNamespace, fmt.Errorf("error")},
+		{&KeyTypeName, fmt.Errorf("error")},
+		{&KeyNamespaceName, fmt.Errorf("error")},
 	}
 
 	t.Logf("Given the need to test method validateKey of Memory type.")
@@ -42,16 +43,7 @@ func TestValidateKey(t *testing.T) {
 
 		got := m.validateKey(test.key)
 
-		if got == nil && test.want != nil {
-			t.Errorf(LogFailed(got, test.want, ballotX))
-		} else if got != nil && test.want == nil {
-			t.Errorf(LogFailed(got, test.want, ballotX))
-		} else if got == nil && test.want == nil {
-			t.Logf(LogApproved(test.want, checkMark))
-			continue
-		} else if got.Error() != test.want.Error() {
-			t.Errorf(LogFailed(got, test.want, ballotX))
-		} else {
+		if reflect.DeepEqual(got, test.want) {
 			t.Logf(LogApproved(test.want, checkMark))
 		}
 	}
@@ -204,22 +196,9 @@ func TestFind(t *testing.T) {
 		if len(got) == 0 && len(test.want) == 0 {
 			t.Logf(LogApproved(test.want, checkMark))
 		} else {
-			var flag = false
+			var flag = compare(got, test.want)
 
-			for _, vGot := range got {
-				flag = false
-				for _, vTest := range test.want {
-					if vGot == vTest {
-						flag = true
-						break
-					}
-				}
-				if flag == false {
-					t.Fatalf(LogFailed(got, test.want, ballotX))
-				}
-			}
-
-			if flag == false {
+			if !flag {
 				t.Errorf(LogFailed(got, test.want, ballotX))
 			} else {
 				t.Logf(LogApproved(test.want, checkMark))
@@ -228,6 +207,24 @@ func TestFind(t *testing.T) {
 
 	}
 
+}
+
+func compare(got, want []*object.Object) bool {
+	var flag = false
+
+	for _, vGot := range got {
+		flag = false
+		for _, vTest := range want {
+			if vGot == vTest {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			return false
+		}
+	}
+	return true
 }
 
 var (
