@@ -27,7 +27,7 @@ func TestNewConfig(t *testing.T) {
 	}{
 		{configPath, config1, nil},
 		{"wrongPath", nil, fmt.Errorf("stat wrongPath: no such file or directory")},
-		{"configExamples", nil, fmt.Errorf("error")},
+		{"configExamples", nil, fmt.Errorf("stat configExamples: no such file or directory")},
 		{configPathDuplicateActors, nil, fmt.Errorf("error")},
 	}
 
@@ -327,8 +327,8 @@ var (
 	roleToRules4 = map[string][]Rule{"judge": []Rule{rule3, rule4}, "logger": []Rule{rule5}}
 	config4      = &Config{configPathInvalidRole, []Role{role2, role3}, []Actor{actor1, actor2, actor3}, idToRole1, roleToRules1}
 
-	configPath                 = "configExamples/roles.yaml"
-	configPathRoleWithoutRules = "configExamples/roles2.yaml"
-	configPathDuplicateActors  = "configExamples/roles3.yaml"
-	configPathInvalidRole      = "configExamples/roles4.yaml"
+	configPath                 = "examples/roles.yaml"
+	configPathRoleWithoutRules = "examples/roles2.yaml"
+	configPathDuplicateActors  = "examples/roles3.yaml"
+	configPathInvalidRole      = "examples/roles4.yaml"
 )
