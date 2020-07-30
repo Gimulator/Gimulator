@@ -24,16 +24,15 @@ func newWatcher(ch chan *object.Object) (watcher, error) {
 
 func (w *watcher) sendIfNeeded(obj *object.Object) error {
 	for _, k := range w.keys {
-		if !k.Match(obj.Key) {
-			continue
+		if k.Match(obj.Key) {
+			select {
+			case w.ch <- obj:
+			default:
+				return fmt.Errorf("could not write to object")
+			}
+			
+			break	
 		}
-
-		select {
-		case w.ch <- obj:
-		default:
-			return fmt.Errorf("could not write to object")
-		}
-		break
 	}
 	return nil
 }
