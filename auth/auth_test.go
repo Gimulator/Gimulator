@@ -55,14 +55,16 @@ func TestNewAuth(t *testing.T) {
 		{ConfigPath: cp[7], Pass: false},
 	}
 	for _, test := range testCases {
-		config, err1 := config.NewConfig(test.ConfigPath)
-		if err1 != nil {
-			PrintResult(t, test.Pass, err1)
-		} else if _, err2 := NewAuth(config); err2 != nil {
-			PrintResult(t, test.Pass, err2)
-		} else {
-			PrintResult(t, test.Pass, nil)
+		config, err := config.NewConfig(test.ConfigPath)
+		if err != nil {
+			PrintResult(t, test.Pass, err)
+			continue
 		}
+		if _, err := NewAuth(config); err != nil {
+			PrintResult(t, test.Pass, err)
+			continue
+		}
+		PrintResult(t, test.Pass, nil)
 	}
 }
 
@@ -89,22 +91,22 @@ func TestRegister(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		config, err1 := config.NewConfig(test.ConfigPath)
-		if err1 != nil {
-			PrintResult(t, test.Pass, err1)
-		} else {
-			au, err2 := NewAuth(config)
-			if err2 != nil {
-				PrintResult(t, test.Pass, err2)
-			} else {
-				err3 := au.Register(test.id)
-				if err3 != nil {
-					PrintResult(t, test.Pass, err3)
-				} else {
-					PrintResult(t, test.Pass, err2)
-				}
-			}
+		config, err := config.NewConfig(test.ConfigPath)
+		if err != nil {
+			PrintResult(t, test.Pass, err)
+			continue
 		}
+		au, err := NewAuth(config)
+		if err != nil {
+			PrintResult(t, test.Pass, err)
+			continue
+		}
+
+		if err := au.Register(test.id); err != nil {
+			PrintResult(t, test.Pass, err)
+			continue
+		}
+		PrintResult(t, test.Pass, nil)
 	}
 }
 
@@ -133,23 +135,23 @@ func TestAuth(t *testing.T) {
 		{ConfigPath: cp[6], id: "logger-123", Pass: false},
 		{ConfigPath: cp[7], id: "", Pass: false}, //idk
 	}
-	for tc, _ := range testCases {
-		config, err1 := config.NewConfig(testCases[tc].ConfigPath)
-		if err1 != nil {
-			PrintResult(t, testCases[tc].Pass, err1)
-		} else {
-			au, err2 := NewAuth(config)
-			if err2 != nil {
-				PrintResult(t, testCases[tc].Pass, err2)
-			} else {
-				err3 := au.Auth(testCases[tc].id, methodCases[tc], &objectCases[tc])
-				if err3 != nil {
-					PrintResult(t, testCases[tc].Pass, err3)
-				} else {
-					PrintResult(t, testCases[tc].Pass, err2)
-				}
-			}
+	for tc := range testCases {
+		config, err := config.NewConfig(testCases[tc].ConfigPath)
+		if err != nil {
+			PrintResult(t, testCases[tc].Pass, err)
+			continue
 		}
+		au, err := NewAuth(config)
+		if err != nil {
+			PrintResult(t, testCases[tc].Pass, err)
+			continue
+		}
+
+		if err := au.Auth(testCases[tc].id, methodCases[tc], &objectCases[tc]); err != nil {
+			PrintResult(t, testCases[tc].Pass, err)
+			continue
+		}
+		PrintResult(t, testCases[tc].Pass, nil)
 	}
 }
 
@@ -169,72 +171,70 @@ func TestHash(t *testing.T) {
 		{tip: TestInput{ConfigPath: cp[6]}, id: "agent-123", method: methodCases[4], key: object.Key{Type: "action"}, Pass: false},
 	}
 	for _, test := range testCases {
-		config, err1 := config.NewConfig(test.tip.ConfigPath)
-		if err1 != nil {
-			PrintResult(t, test.Pass, err1)
-		} else {
-			au, err2 := NewAuth(config)
-			if err2 != nil {
-				PrintResult(t, test.Pass, err2)
-			} else {
-				hash0 := fmt.Sprintf("%s-%s-%s-%s-%s", test.id, test.method, test.key.Type, test.key.Namespace, test.key.Name)
-				hash1 := au.hash(test.id, test.method, test.key)
-				if hash0 != hash1 {
-					fmt.Println(hash0, hash1, "sdf")
-					PrintResult(t, test.Pass, errors.New("The hash is not working properly"))
-				} else {
-					PrintResult(t, test.Pass, nil)
-				}
-			}
+		config, err := config.NewConfig(test.tip.ConfigPath)
+		if err != nil {
+			PrintResult(t, test.Pass, err)
+			continue
 		}
+		au, err := NewAuth(config)
+		if err != nil {
+			PrintResult(t, test.Pass, err)
+			continue
+		}
+		hash0 := fmt.Sprintf("%s-%s-%s-%s-%s", test.id, test.method, test.key.Type, test.key.Namespace, test.key.Name)
+		hash1 := au.hash(test.id, test.method, test.key)
+		if hash0 != hash1 {
+			PrintResult(t, test.Pass, errors.New("The hash is not working properly"))
+			continue
+		}
+		PrintResult(t, test.Pass, nil)
 	}
 }
 
 var objectKeys = []object.Key{
 	//config0
-	object.Key{Type: "world", Name: "wrongName"},
-	object.Key{Type: "action", Namespace: "default"},
-	object.Key{Type: "action"},
-	object.Key{Type: "world"},
-	object.Key{},
+	{Type: "world", Name: "wrongName"},
+	{Type: "action", Namespace: "default"},
+	{Type: "action"},
+	{Type: "world"},
+	{},
 	//config1
-	object.Key{Type: "action", Namespace: "nondefault"},
-	object.Key{Type: "world"},
-	object.Key{Name: "wrongName"},
+	{Type: "action", Namespace: "nondefault"},
+	{Type: "world"},
+	{Name: "wrongName"},
 	//config2
-	object.Key{Type: "nonaction", Name: "wrongName", Namespace: "nondefault"},
-	object.Key{Type: "", Name: "wrongName", Namespace: "nondefault"},
-	object.Key{Type: "action"},
-	object.Key{Type: "nonaction", Name: "", Namespace: "nondefault"},
+	{Type: "nonaction", Name: "wrongName", Namespace: "nondefault"},
+	{Type: "", Name: "wrongName", Namespace: "nondefault"},
+	{Type: "action"},
+	{Type: "nonaction", Name: "", Namespace: "nondefault"},
 	//config3
-	object.Key{Type: "nonaction", Namespace: "default"},
-	object.Key{},
-	object.Key{Type: "world"},
-
-	object.Key{Type: "nonaction", Name: "wrongName", Namespace: "default"},
-	object.Key{Type: "nonaction"},
-	object.Key{Name: "wrongName", Namespace: "default"},
+	{Type: "nonaction", Namespace: "default"},
+	{},
+	{Type: "world"},
+	//others
+	{Type: "nonaction", Name: "wrongName", Namespace: "default"},
+	{Type: "nonaction"},
+	{Name: "wrongName", Namespace: "default"},
 }
 var objectCases = []object.Object{
-	//object.Object{},     expected to fail but the program exits (?)
-	object.Object{Key: &objectKeys[0], Value: "Value"},
-	object.Object{Key: &objectKeys[1], Value: "testing"},
-	object.Object{Key: &objectKeys[2], Value: ""},
-	object.Object{Key: &objectKeys[3], Value: "Value"},
-	object.Object{Key: &objectKeys[4], Value: ""},
-	object.Object{Key: &objectKeys[5], Value: "abc"},
-	object.Object{Key: &objectKeys[6], Value: "abc"},
-	object.Object{Key: &objectKeys[7], Value: ""},
-	object.Object{Key: &objectKeys[8], Value: "Value"},
-	object.Object{Key: &objectKeys[9], Value: ""},
-	object.Object{Key: &objectKeys[10], Value: ""},
-	object.Object{Key: &objectKeys[11], Value: "Value"},
-	object.Object{Key: &objectKeys[12], Value: ""},
-	object.Object{Key: &objectKeys[13], Value: ""},
-	object.Object{Key: &objectKeys[14], Value: "Value"},
-	object.Object{Key: &objectKeys[15], Value: "Value"},
-	object.Object{Key: &objectKeys[16], Value: ""},
-	object.Object{Key: &objectKeys[17], Value: ""},
+	//object.Object{},    // expected to fail but the program exits
+	{Key: &objectKeys[0], Value: "Value"},
+	{Key: &objectKeys[1], Value: "testing"},
+	{Key: &objectKeys[2], Value: ""},
+	{Key: &objectKeys[3], Value: "Value"},
+	{Key: &objectKeys[4], Value: ""},
+	{Key: &objectKeys[5], Value: "abc"},
+	{Key: &objectKeys[6], Value: "abc"},
+	{Key: &objectKeys[7], Value: ""},
+	{Key: &objectKeys[8], Value: "Value"},
+	{Key: &objectKeys[9], Value: ""},
+	{Key: &objectKeys[10], Value: ""},
+	{Key: &objectKeys[11], Value: "Value"},
+	{Key: &objectKeys[12], Value: ""},
+	{Key: &objectKeys[13], Value: ""},
+	{Key: &objectKeys[14], Value: "Value"},
+	{Key: &objectKeys[15], Value: "Value"},
+	{Key: &objectKeys[16], Value: ""},
 }
 var methodCases = []object.Method{
 	object.MethodGet,
