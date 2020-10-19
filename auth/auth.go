@@ -2,13 +2,10 @@ package auth
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
-	"github.com/Gimulator/Gimulator/config"
-	"github.com/Gimulator/Gimulator/object"
-	"github.com/patrickmn/go-cache"
-	"github.com/sirupsen/logrus"
+	"github.com/Gimulator/Gimulator/types.go"
+	"github.com/Gimulator/protobuf/go/api"
 )
 
 const (
@@ -16,96 +13,59 @@ const (
 	defaultCleanupInterval = time.Second * 180
 )
 
-type response struct {
-	isAllowed bool
-	err       error
+type Storage interface {
+	GetRole(id string) string
+	GetRules(role string, method types.Method, key *api.Key) []string
 }
 
-type Auth struct {
-	sync.Mutex
-
-	config *config.Config
-	cache  *cache.Cache
-	log    *logrus.Entry
+type Auther struct {
+	storage Storage
 }
 
-func NewAuth(config *config.Config) (*Auth, error) {
-	log := logrus.WithField("entity", "auth")
-	log.Info("starting to create new auth")
-
-	return &Auth{
-		Mutex:  sync.Mutex{},
-		config: config,
-		cache:  cache.New(defaultExpirationTime, defaultCleanupInterval),
-		log:    log,
+func NewAuther(storage Storage) (*Auther, error) {
+	return &Auther{
+		storage: storage,
 	}, nil
 }
 
-func (a *Auth) Register(id string) error {
-	if err := a.config.DoesIdExist(id); err != nil {
-		return err
+func (a *Auther) Validate(id string, method types.Method, key *api.Key) error {
+	role := a.storage.GetRole(id)
+	if role == "" {
+		return fmt.Errorf("unauthorized id")
+	}
+
+	switch role {
+	case string(types.DirectorRole):
+		return a.validateDirectorAction(id, role, method, key)
+	case string(types.MasterRole):
+		return a.validateMasterAction(id, role, method, key)
+	case string(types.OperatorRole):
+		return a.validateOperatorAction(id, role, method, key)
+	default:
+		return a.validateActorAction(id, role, method, key)
+	}
+}
+
+func (a *Auther) validateDirectorAction(id, role string, method types.Method, key *api.Key) error {
+	rules := a.storage.GetRules(role, method, key)
+	if len(rules) == 0 {
+		return fmt.Errorf("unauthorized action")
 	}
 	return nil
 }
 
-func (a *Auth) Auth(id string, method object.Method, obj *object.Object) error {
-	hash := a.hash(id, method, *obj.Key)
-
-	if i, exists := a.cache.Get(hash); exists {
-		resp := i.(response)
-		if resp.isAllowed {
-			return nil
-		}
-		return resp.err
-	}
-
-	resp := response{
-		isAllowed: false,
-		err:       nil,
-	}
-	defer func() {
-		a.cache.Add(hash, resp, defaultExpirationTime)
-	}()
-
-	err := a.config.DoesIdExist(id)
-	if err != nil {
-		resp.err = err
-		return err
-	}
-
-	rules, err := a.config.GetRules(id)
-	if err != nil {
-		resp.err = err
-		return err
-	}
-
-	for _, rule := range rules {
-		if !rule.Key.Match(obj.Key) {
-			continue
-		}
-
-		for _, met := range rule.Methods {
-			if met != method {
-				continue
-			}
-			resp.isAllowed = true
-			resp.err = nil
-			return nil
-		}
-	}
-
-	err = fmt.Errorf("access denied on id='%s' key='%v', method='%s'", id, *obj.Key, method)
-	resp.err = err
-	resp.isAllowed = false
-
-	return err
+func (a *Auther) validateMasterAction(id, role string, method types.Method, key *api.Key) error {
+	return nil
 }
 
-func (a *Auth) getResp(hash string) (response, bool) {
-	i, exists := a.cache.Get(hash)
-	return i.(response), exists
+func (a *Auther) validateOperatorAction(id, role string, method types.Method, key *api.Key) error {
+	return nil
 }
 
-func (a *Auth) hash(id string, method object.Method, key object.Key) string {
-	return fmt.Sprintf("%s-%s-%s-%s-%s", id, method, key.Type, key.Namespace, key.Name)
+func (a *Auther) validateActorAction(id, role string, method types.Method, key *api.Key) error {
+	rules := a.storage.GetRules(role, method, key)
+	if len(rules) == 0 {
+		return fmt.Errorf("unauthorized action")
+	}
+	return nil
 }

@@ -2,15 +2,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path"
 	"runtime"
 
-	"github.com/Gimulator/Gimulator/api"
-	"github.com/Gimulator/Gimulator/auth"
-	"github.com/Gimulator/Gimulator/config"
-	"github.com/Gimulator/Gimulator/simulator"
-	"github.com/Gimulator/Gimulator/storage"
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,31 +33,4 @@ func init() {
 }
 
 func main() {
-	host := os.Getenv("GIMULATOR_HOST")
-	if host == "" {
-		panic("set 'GIMULATOR_HOST' to listen and serve")
-	}
-
-	configPath := os.Getenv("GIMULATOR_ROLES_FILE_PATH")
-	if configPath == "" {
-		panic("set 'GIMULATOR_ROLES_FILE_PATH' to setup auth")
-	}
-
-	storage := storage.NewMemory()
-	simulator := simulator.NewSimulator(storage)
-
-	config, err := config.NewConfig(configPath)
-	if err != nil {
-		panic(err)
-	}
-
-	auth, err := auth.NewAuth(config)
-	if err != nil {
-		panic(err)
-	}
-
-	api := api.NewManager(simulator, auth)
-	if err := api.ListenAndServe(host); err != nil {
-		panic(err)
-	}
 }
