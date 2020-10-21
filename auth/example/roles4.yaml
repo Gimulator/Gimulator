@@ -1,0 +1,35 @@
+roles:
+  - name: "judge"
+    rules:
+      - key:
+          type: "action"
+        methods:
+          - "get"
+          - "watch"
+      - key:
+          type: "world"
+        methods:
+          - "get"
+          - "set"
+          - "find"
+          - "watch"
+          - "delete"
+  - name: "logger"
+    rules:
+      - key:
+          type: ""
+          name: ""
+          namespace: ""
+        methods:
+          - "get"
+          - "set"
+          - "find"
+          - "watch"
+          - "delete"
+actors:
+  - id: "agent-123"
+    role: "agent"
+  - id: "judge-123"
+    role: "judge"
+  - id: "logger-123"
+    role: "logger"
