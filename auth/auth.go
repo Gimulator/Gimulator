@@ -32,7 +32,7 @@ func NewAuther(storage Storage) (*Auther, error) {
 func (a *Auther) Auth(id string, method types.Method, key *api.Key) error {
 	role := a.storage.GetRole(id)
 	if role == "" {
-		return status.Errorf(codes.Unauthenticated, "couldn't role based on id")
+		return status.Errorf(codes.Unauthenticated, "couldn't find role based on id")
 	}
 
 	switch role {
