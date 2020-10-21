@@ -138,6 +138,7 @@ func (c *Config) validateActorsRole() error {
 		for _, role := range c.Roles {
 			if actorRole == role.Name {
 				isValid = true
+				break
 			}
 		}
 

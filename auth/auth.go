@@ -49,6 +49,9 @@ func (a *Auth) Register(id string) error {
 }
 
 func (a *Auth) Auth(id string, method object.Method, obj *object.Object) error {
+	if obj.Key == nil {
+		return fmt.Errorf("object's key is empty")
+	}
 	hash := a.hash(id, method, *obj.Key)
 
 	if i, exists := a.cache.Get(hash); exists {
