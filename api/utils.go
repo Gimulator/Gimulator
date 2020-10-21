@@ -8,7 +8,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Gimulator/Gimulator/types.go"
+	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/gddo/httputil/header"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) string {
@@ -55,4 +60,88 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) str
 	}
 
 	return ""
+}
+
+func validateKey(key *api.Key, method types.Method) error {
+	if key == nil {
+		return status.Errorf(codes.InvalidArgument, "the key cannot be nil/null")
+	}
+
+	switch method {
+	case types.GetMethod:
+		return validateGetKey(key)
+	case types.GetAllMethod:
+		return validateGetAllKey(key)
+	case types.PutMethod:
+		return validatePutKey(key)
+	case types.DeleteMethod:
+		return validateDeleteKey(key)
+	case types.DeleteAllMethod:
+		return validateDeleteAllKey(key)
+	case types.WatchMethod:
+		return validateWatchKey(key)
+	default:
+		//TODO
+	}
+	return nil
+}
+
+func validateGetKey(key *api.Key) error {
+	if key.Type == "" {
+		return status.Errorf(codes.InvalidArgument, "The type field of a key in the GET request cannot be empty")
+	}
+	if key.Name == "" {
+		return status.Errorf(codes.InvalidArgument, "The name field of a key in the GET request cannot be empty")
+	}
+	if key.Namespace == "" {
+		return status.Errorf(codes.InvalidArgument, "The namespace field of a key in the GET request cannot be empty")
+	}
+	return nil
+}
+
+func validateGetAllKey(key *api.Key) error {
+	return nil
+}
+
+func validatePutKey(key *api.Key) error {
+	if key.Type == "" {
+		return status.Errorf(codes.InvalidArgument, "the Type field of a key in the PUT request cannot be empty")
+	}
+	if key.Name == "" {
+		return status.Errorf(codes.InvalidArgument, "the Name field of a key in the PUT request cannot be empty")
+	}
+	if key.Namespace == "" {
+		return status.Errorf(codes.InvalidArgument, "the Namespace field of a key in the PUT request cannot be empty")
+	}
+	return nil
+}
+
+func validateDeleteKey(key *api.Key) error {
+	if key.Type == "" {
+		return status.Errorf(codes.InvalidArgument, "the Type field of a key in the DELETE request cannot be empty")
+	}
+	if key.Name == "" {
+		return status.Errorf(codes.InvalidArgument, "the Name field of a key in the DELETE request cannot be empty")
+	}
+	if key.Namespace == "" {
+		return status.Errorf(codes.InvalidArgument, "the Namespace field of a key in the DELETE request cannot be empty")
+	}
+	return nil
+}
+
+func validateDeleteAllKey(key *api.Key) error {
+	return nil
+}
+
+func validateWatchKey(key *api.Key) error {
+	return nil
+}
+
+func setupMessage(id string, message *api.Message) {
+	meta := &api.Meta{
+		CreationTime: timestamppb.Now(),
+		Owner:        id,
+	}
+
+	message.Meta = meta
 }

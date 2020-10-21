@@ -1,10 +1,11 @@
 package storage
 
-import "github.com/Gimulator/Gimulator/object"
+import "github.com/Gimulator/protobuf/go/api"
 
 type Storage interface {
-	Set(*object.Object) error
-	Delete(*object.Key) error
-	Get(*object.Key) (*object.Object, error)
-	Find(*object.Key) ([]*object.Object, error)
+	Put(*api.Message) error
+	Delete(*api.Key) error
+	DeleteAll(*api.Key) error
+	Get(*api.Key) (*api.Message, error)
+	GetAll(*api.Key) ([]*api.Message, error)
 }

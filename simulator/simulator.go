@@ -2,10 +2,9 @@ package simulator
 
 import (
 	"sync"
-	"time"
 
-	"github.com/Gimulator/Gimulator/object"
 	"github.com/Gimulator/Gimulator/storage"
+	"github.com/Gimulator/protobuf/go/api"
 )
 
 type Simulator struct {
@@ -22,50 +21,44 @@ func NewSimulator(strg storage.Storage) *Simulator {
 	}
 }
 
-func (s *Simulator) Get(id string, key *object.Key) (*object.Object, error) {
+func (s *Simulator) Get(key *api.Key) (*api.Message, error) {
 	s.Lock()
 	defer s.Unlock()
 
 	return s.storage.Get(key)
 }
 
-func (s *Simulator) Set(id string, obj *object.Object) error {
+func (s *Simulator) GetAll(key *api.Key) ([]*api.Message, error) {
 	s.Lock()
 	defer s.Unlock()
 
-	obj.Meta = &object.Meta{
-		Owner:        id,
-		CreationTime: time.Now(),
-		Method:       object.MethodSet,
-	}
+	return s.storage.GetAll(key)
+}
 
-	if err := s.storage.Set(obj); err != nil {
+func (s *Simulator) Put(mes *api.Message) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if err := s.storage.Put(mes); err != nil {
 		return err
 	}
-	s.spreader.Spread(obj)
+	s.spreader.Spread(mes)
 
 	return nil
 }
 
-func (s *Simulator) Delete(id string, key *object.Key) error {
+func (s *Simulator) Delete(key *api.Key) error {
 	s.Lock()
 	defer s.Unlock()
 
 	return s.storage.Delete(key)
 }
 
-func (s *Simulator) Find(id string, key *object.Key) ([]*object.Object, error) {
+func (s *Simulator) Watch(key *api.Key, ch *Channel) error {
 	s.Lock()
 	defer s.Unlock()
 
-	return s.storage.Find(key)
-}
-
-func (s *Simulator) Watch(id string, key *object.Key, ch chan *object.Object) error {
-	s.Lock()
-	defer s.Unlock()
-
-	if err := s.spreader.AddWatcher(id, key, ch); err != nil {
+	if err := s.spreader.AddWatcher(key, ch); err != nil {
 		return err
 	}
 	return nil

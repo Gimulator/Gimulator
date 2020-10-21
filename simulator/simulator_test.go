@@ -155,7 +155,7 @@ func TestWatch(t *testing.T) {
 	s := makeTestSimulator(makeTestStorage(&ObjectKComplete))
 	s.spreader.watchers[id] = watcher{
 		keys: []*object.Key{&KeyComplete},
-		ch:   make(chan *object.Object),
+		channel:   make(chan *object.Object),
 	}
 	tempch := make(chan *object.Object)
 	tests := []struct {

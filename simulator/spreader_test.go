@@ -30,7 +30,7 @@ func TestAddWatcher(t *testing.T) {
 	}
 	s.watchers[id] = watcher{
 		keys: []*object.Key{&KeyComplete, &KeyOnlyType},
-		ch:   make(chan *object.Object),
+		channel:   make(chan *object.Object),
 	}
 	testCh := make(chan *object.Object)
 	var tests = []struct {

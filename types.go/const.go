@@ -11,10 +11,10 @@ const (
 type Method string
 
 const (
-	Get       Method = "get-method"
-	GetAll    Method = "get-all-method"
-	Put       Method = "put-method"
-	Delete    Method = "delete-method"
-	DeleteAll Method = "delete-all-method"
-	Watch     Method = "watch-method"
+	GetMethod       Method = "get-method"
+	GetAllMethod    Method = "get-all-method"
+	PutMethod       Method = "put-method"
+	DeleteMethod    Method = "delete-method"
+	DeleteAllMethod Method = "delete-all-method"
+	WatchMethod     Method = "watch-method"
 )
