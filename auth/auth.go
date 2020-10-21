@@ -1,11 +1,12 @@
 package auth
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/Gimulator/Gimulator/types.go"
 	"github.com/Gimulator/protobuf/go/api"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -28,10 +29,10 @@ func NewAuther(storage Storage) (*Auther, error) {
 	}, nil
 }
 
-func (a *Auther) Validate(id string, method types.Method, key *api.Key) error {
+func (a *Auther) Auth(id string, method types.Method, key *api.Key) error {
 	role := a.storage.GetRole(id)
 	if role == "" {
-		return fmt.Errorf("unauthorized id")
+		return status.Errorf(codes.Unauthenticated, "couldn't role based on id")
 	}
 
 	switch role {
@@ -49,7 +50,7 @@ func (a *Auther) Validate(id string, method types.Method, key *api.Key) error {
 func (a *Auther) validateDirectorAction(id, role string, method types.Method, key *api.Key) error {
 	rules := a.storage.GetRules(role, method, key)
 	if len(rules) == 0 {
-		return fmt.Errorf("unauthorized action")
+		return status.Errorf(codes.PermissionDenied, "")
 	}
 	return nil
 }
@@ -65,7 +66,7 @@ func (a *Auther) validateOperatorAction(id, role string, method types.Method, ke
 func (a *Auther) validateActorAction(id, role string, method types.Method, key *api.Key) error {
 	rules := a.storage.GetRules(role, method, key)
 	if len(rules) == 0 {
-		return fmt.Errorf("unauthorized action")
+		return status.Errorf(codes.PermissionDenied, "")
 	}
 	return nil
 }

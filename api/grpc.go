@@ -26,7 +26,7 @@ func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 		return nil, err
 	}
 
-	if err := s.auther.Validate(id, types.GetMethod, key); err != nil {
+	if err := s.auther.Auth(id, types.GetMethod, key); err != nil {
 		return nil, err
 	}
 
@@ -45,7 +45,7 @@ func (s *Server) GetAll(key *api.Key, stream api.API_GetAllServer) error {
 		return err
 	}
 
-	if err := s.auther.Validate(id, types.GetAllMethod, key); err != nil {
+	if err := s.auther.Auth(id, types.GetAllMethod, key); err != nil {
 		return err
 	}
 
@@ -73,7 +73,7 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 		return nil, err
 	}
 
-	if err := s.auther.Validate(id, types.PutMethod, message.Key); err != nil {
+	if err := s.auther.Auth(id, types.PutMethod, message.Key); err != nil {
 		return nil, err
 	}
 
@@ -99,7 +99,7 @@ func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error)
 		return nil, err
 	}
 
-	if err := s.auther.Validate(id, types.DeleteMethod, key); err != nil {
+	if err := s.auther.Auth(id, types.DeleteMethod, key); err != nil {
 		return nil, err
 	}
 
@@ -120,7 +120,7 @@ func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, err
 		return nil, err
 	}
 
-	if err := s.auther.Validate(id, types.DeleteAllMethod, key); err != nil {
+	if err := s.auther.Auth(id, types.DeleteAllMethod, key); err != nil {
 		return nil, err
 	}
 
@@ -141,7 +141,7 @@ func (s *Server) Watch(key *api.Key, stream api.API_WatchServer) error {
 		return err
 	}
 
-	if err := s.auther.Validate(id, types.WatchMethod, key); err != nil {
+	if err := s.auther.Auth(id, types.WatchMethod, key); err != nil {
 		return err
 	}
 
