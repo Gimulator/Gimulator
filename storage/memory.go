@@ -18,64 +18,24 @@ var sqlite Memory
 
 func init() {
 
+	path := "sqlite-database.db"
 	// Create db file
-	err := createDBFile()
+	err := sqlite.createDBFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Open the sqlite file
-	err = open(&sqlite)
+	err = sqlite.open(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Create table
-	err = createTable(&sqlite)
+	err = sqlite.createTable()
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func createDBFile() error {
-	file, err := os.Create("sqlite-database.db")
-	if err != nil {
-		return err
-	}
-	file.Close()
-	return nil
-}
-
-func open(m *Memory) error {
-	db, err := sql.Open("sqlite3", "./sqlite-database.db")
-	m.db = db
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func createTable(m *Memory) error {
-	createMessageTable := `CREATE TABLE message (
-		"type" TEXT,
-		"name" TEXT,
-		"namespace" TEXT,
-		"content" TEXT,
-		"owner" TEXT,
-		"creationtime" TEXT,
-		PRIMARY KEY (type, name, namespace)
-	  );`
-
-	statement, err := m.db.Prepare(createMessageTable)
-	if err != nil {
-		return err
-	}
-	_, err = statement.Exec()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func GetDB() *Memory {
@@ -100,6 +60,47 @@ func (m *Memory) Get(key *api.Key) (*api.Message, error) {
 
 func (m *Memory) GetAll(key *api.Key) ([]*api.Message, error) {
 	return m.getAll(key)
+}
+
+func (m *Memory) createDBFile(path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	file.Close()
+	return nil
+}
+
+func (m *Memory) open(path string) error {
+	db, err := sql.Open("sqlite3", path)
+	m.db = db
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *Memory) createTable() error {
+	createMessageTable := `CREATE TABLE message (
+		"type" TEXT,
+		"name" TEXT,
+		"namespace" TEXT,
+		"content" TEXT,
+		"owner" TEXT,
+		"creationtime" TEXT,
+		PRIMARY KEY (type, name, namespace)
+	  );`
+
+	statement, err := m.db.Prepare(createMessageTable)
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *Memory) put(message *api.Message) error {
@@ -173,24 +174,79 @@ func (m *Memory) delete(key *api.Key) error {
 	return nil
 }
 
-// TODO
 func (m *Memory) deleteAll(key *api.Key) error {
 
-	deleteStatement := `DELETE FROM message`
+	deleteStatement := `DELETE FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
 	statement, err := m.db.Prepare(deleteStatement)
 	if err != nil {
 		return err
 	}
-	_, err = statement.Exec()
+	var t, n, ns string
+	if key.Type == "" {
+		t = "%"
+	} else {
+		t = key.Type
+	}
+	if key.Name == "" {
+		n = "%"
+	} else {
+		n = key.Name
+	}
+	if key.Namespace == "" {
+		ns = "%"
+	} else {
+		ns = key.Namespace
+	}
+	_, err = statement.Exec(t, n, ns)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// TODO
 func (m *Memory) getAll(key *api.Key) ([]*api.Message, error) {
-	return nil, nil
+	selectStatement := `SELECT * FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
+	var t, n, ns string
+	if key.Type == "" {
+		t = "%"
+	} else {
+		t = key.Type
+	}
+	if key.Name == "" {
+		n = "%"
+	} else {
+		n = key.Name
+	}
+	if key.Namespace == "" {
+		ns = "%"
+	} else {
+		ns = key.Namespace
+	}
+	row, err := m.db.Query(selectStatement, t, n, ns)
+	if err != nil {
+		return nil, err
+	}
+	defer row.Close()
+	var messages []*api.Message
+	for row.Next() {
+		keyR := api.Key{}
+		metaR := api.Meta{}
+		messageR := api.Message{
+			Content: "",
+			Key:     &keyR,
+			Meta:    &metaR,
+		}
+		err = row.Scan(&messageR.Key.Type, &messageR.Key.Name, &messageR.Key.Namespace, &messageR.Content, &messageR.Meta.Owner, &messageR.Meta.CreationTime)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, &messageR)
+	}
+	if len(messages) == 0 {
+		return nil, fmt.Errorf("object with key=%v does not exist", *key)
+	}
+
+	return messages, nil
 }
 
 func (m *Memory) validateKey(key *api.Key) error {
