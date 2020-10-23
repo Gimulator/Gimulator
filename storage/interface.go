@@ -17,11 +17,11 @@ type CredentialStorage interface {
 	GetCredWithToken(string) (string, string, error)
 }
 
-type RolesStorage interface {
+type RoleStorage interface {
 	GetRules(string, types.Method) ([]*api.Key, error)
 }
 
 type AuthStorage interface {
 	CredentialStorage
-	RolesStorage
+	RoleStorage
 }
