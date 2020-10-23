@@ -304,7 +304,7 @@ func (s *Sqlite) setupTables(config *config.Config) error {
 }
 
 func (s *Sqlite) createCredentialsTable() error {
-	createMessageTable := `CREATE TABLE roles (
+	createMessageTable := `CREATE TABLE credentials (
 		"id" TEXT,
 		"role" TEXT,
 		"token" TEXT,
@@ -341,12 +341,12 @@ func (s *Sqlite) fillCredentialsTable(config *config.Config) error {
 }
 
 func (s *Sqlite) createRolesTable() error {
-	createMessageTable := `CREATE TABLE credentials (
+	createMessageTable := `CREATE TABLE roles (
 		"role" TEXT,
 		"type" TEXT,
 		"name" TEXT,
 		"namespace" TEXT,
-		"method" TEXT,
+		"method" TEXT
 	);`
 
 	statement, err := s.Prepare(createMessageTable)

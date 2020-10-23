@@ -73,8 +73,9 @@ func main() {
 	if port == "" {
 		port = "23579"
 	}
+	host := "0.0.0.0:" + port
 
-	listen, err := net.Listen("tcp", port)
+	listen, err := net.Listen("tcp", host)
 	if err != nil {
 		panic(err)
 	}
