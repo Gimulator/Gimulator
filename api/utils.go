@@ -8,12 +8,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Gimulator/Gimulator/types.go"
+	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/gddo/httputil/header"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) string {
@@ -135,13 +134,4 @@ func validateDeleteAllKey(key *api.Key) error {
 
 func validateWatchKey(key *api.Key) error {
 	return nil
-}
-
-func setupMessage(id string, message *api.Message) {
-	meta := &api.Meta{
-		CreationTime: timestamppb.Now(),
-		Owner:        id,
-	}
-
-	message.Meta = meta
 }

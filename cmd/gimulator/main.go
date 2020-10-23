@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"runtime"
 
+	"github.com/Gimulator/Gimulator/config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,4 +35,15 @@ func init() {
 }
 
 func main() {
+	rolesPath := os.Getenv("GIMULATOR_ROLES_PATH")
+	roles, err := config.NewRoles(rolesPath)
+	if err != nil {
+		panic(err)
+	}
+
+	credsPath := os.Getenv("GIMULATOR_CREDENTIALS_PATH")
+	creds, err := config.NewCredentials(credsPath)
+	if err != nil {
+		panic(err)
+	}
 }

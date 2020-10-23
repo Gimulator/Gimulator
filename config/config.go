@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 
+	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 	"gopkg.in/yaml.v2"
 )
@@ -13,20 +14,22 @@ var (
 )
 
 type Rule struct {
-	Key     *api.Key `json:"key"`
-	Methods []string `json:"methods"`
+	Key     *api.Key       `yaml:"key"`
+	Methods []types.Method `yaml:"methods"`
 }
 
 type Roles struct {
-	Director []Rule            `json:"director"`
-	Actors   map[string][]Rule `json:"actors"`
+	Director []Rule            `yaml:"director"`
+	Actors   map[string][]Rule `yaml:"actors"`
 }
 
-type Credentials struct {
-	Roles map[string]string `json:"roles"`
+type Credential struct {
+	Token string `yaml:"token"`
+	ID    string `yaml:"id"`
+	Role  string `yaml:"role"`
 }
 
-func newRoles(path string) (*Roles, error) {
+func NewRoles(path string) (*Roles, error) {
 	if path == "" {
 		path = gimulatorRolesDefaultPath
 	}
@@ -44,7 +47,7 @@ func newRoles(path string) (*Roles, error) {
 	return roles, nil
 }
 
-func NewCredentials(path string) (*Credentials, error) {
+func NewCredentials(path string) ([]Credential, error) {
 	if path == "" {
 		path = gimulatorCredentialsDefaultPath
 	}
@@ -54,8 +57,8 @@ func NewCredentials(path string) (*Credentials, error) {
 		return nil, err
 	}
 
-	credentials := &Credentials{}
-	if err := yaml.NewDecoder(file).Decode(credentials); err != nil {
+	credentials := []Credential{}
+	if err := yaml.NewDecoder(file).Decode(&credentials); err != nil {
 		return nil, err
 	}
 
