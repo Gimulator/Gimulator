@@ -70,10 +70,10 @@ func (s *Sqlite) getCredWithToken(token string) (string, string, error) {
 	selectStatement := `SELECT id, role FROM credentials WHERE token = ?`
 
 	rows, err := s.Query(selectStatement, token)
-	defer rows.Close()
 	if err != nil {
 		return "", "", err
 	}
+	defer rows.Close()
 
 	var id, role string
 	flag := false
@@ -98,10 +98,10 @@ func (s *Sqlite) getRules(role string, method types.Method) ([]*api.Key, error) 
 	selectStatement := `SELECT type, name, namespace FROM roles WHERE role = ? AND method = ?`
 
 	rows, err := s.Query(selectStatement, role, method)
-	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	keys := make([]*api.Key, 0)
 
@@ -151,10 +151,10 @@ func (s *Sqlite) get(key *api.Key) (*api.Message, error) {
 	selectStatement := `SELECT * FROM message WHERE type = ? AND name = ? AND namespace = ?`
 
 	rows, err := s.Query(selectStatement, key.Type, key.Name, key.Namespace)
-	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	flag := false
 	var seconds, nanos int
@@ -186,10 +186,10 @@ func (s *Sqlite) getAll(key *api.Key) ([]*api.Message, error) {
 	t, n, ns := s.makeKey(key)
 
 	rows, err := s.Query(selectStatement, t, n, ns)
-	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var messages []*api.Message
 	for rows.Next() {
@@ -265,10 +265,10 @@ func (s *Sqlite) createDBFile(path string) error {
 	}
 
 	file, err := os.Create(path)
-	defer file.Close()
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	return nil
 }
@@ -293,6 +293,10 @@ func (s *Sqlite) setupTables(config *config.Config) error {
 	}
 
 	if err := s.createMessageTable(); err != nil {
+		return err
+	}
+
+	if err := s.fillCredentialsTable(config); err != nil {
 		return err
 	}
 
@@ -373,6 +377,23 @@ func (s *Sqlite) fillRolesTable(config *config.Config) error {
 
 			if _, err = statement.Exec(types.DirectorRole, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
 				return err
+			}
+		}
+	}
+
+	for role, rules := range config.Roles.Actors {
+		for _, rule := range rules {
+			for _, method := range rule.Methods {
+				insertSQL := `INSERT INTO roles VALUES (?, ?, ?, ?, ?)`
+
+				statement, err := s.Prepare(insertSQL)
+				if err != nil {
+					return err
+				}
+
+				if _, err = statement.Exec(role, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
+					return err
+				}
 			}
 		}
 	}
