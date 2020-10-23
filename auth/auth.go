@@ -26,29 +26,36 @@ func NewAuther(storage storage.AuthStorage) (*Auther, error) {
 	}, nil
 }
 
-func (a *Auther) Auth(token string, method types.Method, key *api.Key) error {
-	_, role, err := a.storage.GetCredWithToken(token)
-	if err != nil {
-		return err
+func (a *Auther) Authenticate(token string) (string, string, error) {
+	id, role, err := a.storage.GetCredWithToken(token)
+	if err == nil {
+		return id, role, nil
 	}
 
+	if status.Code(err) == codes.NotFound {
+		return "", "", status.Errorf(codes.Unauthenticated, "invalid token")
+	}
+	return "", "", err
+}
+
+func (a *Auther) Authorize(role string, method types.Method, key *api.Key) error {
 	if role == "" {
 		return status.Errorf(codes.Unauthenticated, "couldn't find role based on id")
 	}
 
 	switch role {
 	case string(types.DirectorRole):
-		return a.validateDirectorAction(token, method, key)
+		return a.validateDirectorAction(method, key)
 	case string(types.MasterRole):
-		return a.validateMasterAction(token, role, method, key)
+		return a.validateMasterAction(method, key)
 	case string(types.OperatorRole):
-		return a.validateOperatorAction(token, role, method, key)
+		return a.validateOperatorAction(method, key)
 	default:
-		return a.validateActorAction(token, role, method, key)
+		return a.validateActorAction(role, method, key)
 	}
 }
 
-func (a *Auther) validateDirectorAction(id string, method types.Method, key *api.Key) error {
+func (a *Auther) validateDirectorAction(method types.Method, key *api.Key) error {
 	keys, err := a.storage.GetRules(string(types.DirectorRole), method)
 	if err != nil {
 		return err
@@ -63,15 +70,15 @@ func (a *Auther) validateDirectorAction(id string, method types.Method, key *api
 	return status.Errorf(codes.PermissionDenied, "")
 }
 
-func (a *Auther) validateMasterAction(id, role string, method types.Method, key *api.Key) error {
+func (a *Auther) validateMasterAction(method types.Method, key *api.Key) error {
 	return nil
 }
 
-func (a *Auther) validateOperatorAction(id, role string, method types.Method, key *api.Key) error {
+func (a *Auther) validateOperatorAction(method types.Method, key *api.Key) error {
 	return nil
 }
 
-func (a *Auther) validateActorAction(id, role string, method types.Method, key *api.Key) error {
+func (a *Auther) validateActorAction(role string, method types.Method, key *api.Key) error {
 	keys, err := a.storage.GetRules(role, method)
 	if err != nil {
 		return err

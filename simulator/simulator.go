@@ -54,6 +54,13 @@ func (s *Simulator) Delete(key *api.Key) error {
 	return s.storage.Delete(key)
 }
 
+func (s *Simulator) DeleteAll(key *api.Key) error {
+	s.Lock()
+	defer s.Unlock()
+
+	return s.storage.DeleteAll(key)
+}
+
 func (s *Simulator) Watch(key *api.Key, ch *Channel) error {
 	s.Lock()
 	defer s.Unlock()

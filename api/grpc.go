@@ -8,6 +8,7 @@ import (
 	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -17,55 +18,102 @@ type Server struct {
 	api.UnimplementedAPIServer
 	auther    *auth.Auther
 	simulator *simulator.Simulator
+	log       *logrus.Entry
 }
 
 func NewServer(auther *auth.Auther, sim *simulator.Simulator) (*Server, error) {
 	return &Server{
 		auther:    auther,
 		simulator: sim,
+		log:       logrus.WithField("component", "api"),
 	}, nil
 }
 
 func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
+	log := s.log.WithField("key", key.String()).WithField("method", "GET")
+	log.Info("starting to handle incoming request")
+
+	log.Info("starting to extract token from context")
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
+		log.WithError(err).Info("could not extract token form context")
 		return nil, err
 	}
 
-	if err := s.auther.Auth(token, types.GetMethod, key); err != nil {
+	log.Info("starting to authenticate incoming request")
+	id, role, err := s.auther.Authenticate(token)
+	if err != nil {
+		log.WithError(err).Error("could not authenticate incoming request")
+		return nil, err
+	}
+	log = log.WithField("id", id).WithField("role", role)
+
+	log.Info("starting to authorize incoming request")
+	if err := s.auther.Authorize(role, types.GetMethod, key); err != nil {
+		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
+	log.Info("starting to validate key")
 	if err := validateKey(key, types.GetMethod); err != nil {
+		log.WithError(err).Error("could not validate key")
 		return nil, err
 	}
 
-	return s.simulator.Get(key)
+	log.Info("starting to process incoming request")
+	message, err := s.simulator.Get(key)
+	if err != nil {
+		log.WithError(err).Error("could not process incoming request")
+		return nil, err
+	}
+
+	return message, nil
 }
 
 func (s *Server) GetAll(key *api.Key, stream api.API_GetAllServer) error {
-	ctx := stream.Context()
+	log := s.log.WithField("key", key.String()).WithField("method", "GETALL")
+	log.Info("starting to handle incoming request")
 
+	log.Info("starting to extract token from context")
+	ctx := stream.Context()
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
+		log.WithError(err).Info("could not extract token form context")
+
 		return err
 	}
 
-	if err := s.auther.Auth(token, types.GetAllMethod, key); err != nil {
+	log.Info("starting to authenticate incoming request")
+	id, role, err := s.auther.Authenticate(token)
+	if err != nil {
+		log.WithError(err).Error("could not authenticate incoming request")
+		return err
+	}
+	log = log.WithField("id", id).WithField("role", role)
+
+	log.Info("starting to authorize incoming request")
+	if err := s.auther.Authorize(role, types.GetAllMethod, key); err != nil {
+		log.WithError(err).Error("could not authorize incoming request")
 		return err
 	}
 
+	log.Info("starting to validate key")
 	if err := validateKey(key, types.GetAllMethod); err != nil {
+		log.WithError(err).Error("could not validate key")
 		return err
 	}
 
+	log.Info("starting to process incoming request")
 	messages, err := s.simulator.GetAll(key)
 	if err != nil {
+		log.WithError(err).Error("could not process incoming request")
 		return err
 	}
 
+	log.Info("starting to send messages")
 	for _, mes := range messages {
 		if err := stream.Send(mes); err != nil {
+			log.WithError(err).Error("could not send message")
 			return err
 		}
 	}
@@ -74,22 +122,45 @@ func (s *Server) GetAll(key *api.Key, stream api.API_GetAllServer) error {
 }
 
 func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, error) {
+	log := s.log.WithField("key", message.Key.String()).WithField("method", "PUT")
+	log.Info("starting to handle incoming request")
+
+	log.Info("starting to extract token from context")
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
+		log.WithError(err).Info("could not extract token form context")
 		return nil, err
 	}
 
-	if err := s.auther.Auth(token, types.PutMethod, message.Key); err != nil {
+	log.Info("starting to authenticate incoming request")
+	id, role, err := s.auther.Authenticate(token)
+	if err != nil {
+		log.WithError(err).Error("could not authenticate incoming request")
+		return nil, err
+	}
+	log = log.WithField("id", id).WithField("role", role)
+
+	log.Info("starting to authorize incoming request")
+	if err := s.auther.Authorize(role, types.PutMethod, message.Key); err != nil {
+		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
+	log.Info("starting to validate key")
 	if err := validateKey(message.Key, types.PutMethod); err != nil {
+		log.WithError(err).Error("could not validate key")
 		return nil, err
 	}
 
-	s.auther.SetupMessage(token, message)
+	log.Info("starting to setup message")
+	if err := s.auther.SetupMessage(token, message); err != nil {
+		log.WithError(err).Error("could not setup message")
+		return nil, err
+	}
 
+	log.Info("starting to process incoming request")
 	if err := s.simulator.Put(message); err != nil {
+		log.WithError(err).Error("could not process incoming request")
 		return nil, err
 	}
 
@@ -97,20 +168,39 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 }
 
 func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error) {
+	log := s.log.WithField("key", key.String()).WithField("method", "DELETE")
+	log.Info("starting to handle incoming request")
+
+	log.Info("starting to extract token from context")
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
+		log.WithError(err).Info("could not extract token form context")
 		return nil, err
 	}
 
-	if err := s.auther.Auth(token, types.DeleteMethod, key); err != nil {
+	log.Info("starting to authenticate incoming request")
+	id, role, err := s.auther.Authenticate(token)
+	if err != nil {
+		log.WithError(err).Error("could not authenticate incoming request")
+		return nil, err
+	}
+	log = log.WithField("id", id).WithField("role", role)
+
+	log.Info("starting to authorize incoming request")
+	if err := s.auther.Authorize(role, types.DeleteMethod, key); err != nil {
+		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
+	log.Info("starting to validate key")
 	if err := validateKey(key, types.DeleteMethod); err != nil {
+		log.WithError(err).Error("could not validate key")
 		return nil, err
 	}
 
+	log.Info("starting to process incoming request")
 	if err := s.simulator.Delete(key); err != nil {
+		log.WithError(err).Error("could not process incoming request")
 		return nil, err
 	}
 
@@ -118,20 +208,39 @@ func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error)
 }
 
 func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, error) {
+	log := s.log.WithField("key", key.String()).WithField("method", "DELETEALL")
+	log.Info("starting to handle incoming request")
+
+	log.Info("starting to extract token from context")
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
+		log.WithError(err).Info("could not extract token form context")
 		return nil, err
 	}
 
-	if err := s.auther.Auth(token, types.DeleteAllMethod, key); err != nil {
+	log.Info("starting to authenticate incoming request")
+	id, role, err := s.auther.Authenticate(token)
+	if err != nil {
+		log.WithError(err).Error("could not authenticate incoming request")
+		return nil, err
+	}
+	log = log.WithField("id", id).WithField("role", role)
+
+	log.Info("starting to authorize incoming request")
+	if err := s.auther.Authorize(role, types.DeleteAllMethod, key); err != nil {
+		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
+	log.Info("starting to validate key")
 	if err := validateKey(key, types.DeleteAllMethod); err != nil {
+		log.WithError(err).Error("could not validate key")
 		return nil, err
 	}
 
-	if err := s.simulator.Delete(key); err != nil {
+	log.Info("starting to process incoming request")
+	if err := s.simulator.DeleteAll(key); err != nil {
+		log.WithError(err).Error("could not process incoming request")
 		return nil, err
 	}
 
@@ -139,16 +248,34 @@ func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, err
 }
 
 func (s *Server) Watch(key *api.Key, stream api.API_WatchServer) error {
-	token, err := s.ExtractTokenFromContext(stream.Context())
+	log := s.log.WithField("key", key.String()).WithField("method", "WATCH")
+	log.Info("starting to handle incoming request")
+
+	log.Info("starting to extract token from context")
+	ctx := stream.Context()
+	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
+		log.WithError(err).Info("could not extract token form context")
 		return err
 	}
 
-	if err := s.auther.Auth(token, types.WatchMethod, key); err != nil {
+	log.Info("starting to authenticate incoming request")
+	id, role, err := s.auther.Authenticate(token)
+	if err != nil {
+		log.WithError(err).Error("could not authenticate incoming request")
+		return err
+	}
+	log = log.WithField("id", id).WithField("role", role)
+
+	log.Info("starting to authorize incoming request")
+	if err := s.auther.Authorize(role, types.WatchMethod, key); err != nil {
+		log.WithError(err).Error("could not authorize incoming request")
 		return err
 	}
 
+	log.Info("starting to validate key")
 	if err := validateKey(key, types.WatchMethod); err != nil {
+		log.WithError(err).Error("could not validate key")
 		return err
 	}
 
@@ -161,7 +288,9 @@ func (s *Server) Watch(key *api.Key, stream api.API_WatchServer) error {
 		close(send.Ch)
 	}()
 
+	log.Info("starting to process incoming request")
 	if err := s.simulator.Watch(key, send); err != nil {
+		log.WithError(err).Error("could not process incoming request")
 		return err
 	}
 
@@ -169,6 +298,7 @@ func (s *Server) Watch(key *api.Key, stream api.API_WatchServer) error {
 		message := <-send.Ch
 
 		if err := stream.Send(message); err != nil {
+			log.WithError(err).Error("could not send message, closing the watch conn")
 			return err
 		}
 	}
