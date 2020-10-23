@@ -43,29 +43,41 @@ func init() {
 }
 
 func main() {
+	log := logrus.WithField("component", "main")
+
 	configDir := os.Getenv("GIMULATOR_CONFIG_Dir")
+	log.WithField("config-dir", configDir).Info("starting to setup configs")
 	config, err := config.NewConfig(configDir)
 	if err != nil {
+		log.WithField("config-dir", configDir).WithError(err).Fatal("could not setup configs")
 		panic(err)
 	}
 
+	log.Info("starting to setup sqlite")
 	storage, err := storage.NewSqlite(":memory:", config)
 	if err != nil {
+		log.WithError(err).Fatal("could not setup sqlite")
 		panic(err)
 	}
 
+	log.Info("starting to setup simulator")
 	simulator, err := simulator.NewSimulator(storage)
 	if err != nil {
+		log.WithError(err).Fatal("could not setup simulator")
 		panic(err)
 	}
 
+	log.Info("starting to setup auther")
 	auther, err := auth.NewAuther(storage)
 	if err != nil {
+		log.WithError(err).Fatal("could not setup auther")
 		panic(err)
 	}
 
+	log.Info("starting to setup server")
 	server, err := api.NewServer(auther, simulator)
 	if err != nil {
+		log.WithError(err).Fatal("could not setup server")
 		panic(err)
 	}
 
@@ -75,14 +87,18 @@ func main() {
 	}
 	host := "0.0.0.0:" + port
 
-	listen, err := net.Listen("tcp", host)
+	log.WithField("host", host).Info("starting to setup listener")
+	listener, err := net.Listen("tcp", host)
 	if err != nil {
+		log.WithError(err).Fatal("could not setup listener")
 		panic(err)
 	}
 
+	log.Info("starting to serve")
 	s := grpc.NewServer()
 	proto.RegisterAPIServer(s, server)
-	if err := s.Serve(listen); err != nil {
+	if err := s.Serve(listener); err != nil {
+		log.WithError(err).Fatal("could not serve")
 		panic(err)
 	}
 }
