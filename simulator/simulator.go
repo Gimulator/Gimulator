@@ -10,15 +10,15 @@ import (
 type Simulator struct {
 	sync.Mutex
 	spreader *spreader
-	storage  storage.Storage
+	storage  storage.MessageStorage
 }
 
-func NewSimulator(strg storage.Storage) *Simulator {
+func NewSimulator(strg storage.MessageStorage) (*Simulator, error) {
 	return &Simulator{
 		Mutex:    sync.Mutex{},
 		spreader: NewSpreader(),
 		storage:  strg,
-	}
+	}, nil
 }
 
 func (s *Simulator) Get(key *api.Key) (*api.Message, error) {

@@ -19,6 +19,13 @@ type Server struct {
 	simulator *simulator.Simulator
 }
 
+func NewServer(auther *auth.Auther, sim *simulator.Simulator) (*Server, error) {
+	return &Server{
+		auther:    auther,
+		simulator: sim,
+	}, nil
+}
+
 func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {

@@ -2,100 +2,373 @@ package storage
 
 import (
 	"database/sql"
-	"fmt"
-	"log"
 	"os"
-	"strconv"
-	"strings"
 
+	"github.com/Gimulator/Gimulator/config"
+	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	_ "github.com/mattn/go-sqlite3"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type SqliteMemory struct {
-	db *sql.DB
+var memoryPath string = ":memory:"
+
+type Sqlite struct {
+	*sql.DB
 }
 
-var sqlite SqliteMemory
+func NewSqlite(path string, config *config.Config) (*Sqlite, error) {
+	sqlite := &Sqlite{}
 
-func init() {
+	if path == "" {
+		path = memoryPath
+	}
 
-	path := ":memory:"
 	if err := sqlite.prepare(path); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	// Create table
-	err := sqlite.createTable()
+	if err := sqlite.setupTables(config); err != nil {
+		return nil, err
+	}
+
+	return sqlite, nil
+}
+
+func (s *Sqlite) Put(message *api.Message) error {
+	return s.put(message)
+}
+
+func (s *Sqlite) Get(key *api.Key) (*api.Message, error) {
+	return s.get(key)
+}
+
+func (s *Sqlite) GetAll(key *api.Key) ([]*api.Message, error) {
+	return s.getAll(key)
+}
+
+func (s *Sqlite) Delete(key *api.Key) error {
+	return s.delete(key)
+}
+
+func (s *Sqlite) DeleteAll(key *api.Key) error {
+	return s.deleteAll(key)
+}
+
+func (s *Sqlite) GetCredWithToken(token string) (string, string, error) {
+	return s.getCredWithToken(token)
+}
+
+func (s *Sqlite) GetRules(role string, method types.Method) ([]*api.Key, error) {
+	return s.getRules(role, method)
+}
+
+func (s *Sqlite) getCredWithToken(token string) (string, string, error) {
+	selectStatement := `SELECT id, role FROM credentials WHERE token = ?`
+
+	rows, err := s.Query(selectStatement, token)
+	defer rows.Close()
 	if err != nil {
-		log.Fatal(err)
+		return "", "", err
 	}
+
+	var id, role string
+	flag := false
+
+	for rows.Next() {
+		flag = true
+
+		err = rows.Scan(&id, &role)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	if !flag {
+		return "", "", status.Errorf(codes.NotFound, "")
+	}
+
+	return id, role, nil
 }
 
-func GetDB() *SqliteMemory {
-	return &sqlite
+func (s *Sqlite) getRules(role string, method types.Method) ([]*api.Key, error) {
+	selectStatement := `SELECT type, name, namespace FROM roles WHERE role = ? AND method = ?`
+
+	rows, err := s.Query(selectStatement, role, method)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]*api.Key, 0)
+
+	for rows.Next() {
+		key := &api.Key{}
+
+		err = rows.Scan(&key.Type, &key.Name, &key.Namespace)
+		if err != nil {
+			return nil, err
+		}
+
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 
-func (m *SqliteMemory) Put(message *api.Message) error {
-	return m.put(message)
+func (s *Sqlite) put(message *api.Message) error {
+	insertSQL := `INSERT INTO message VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+	statement, err := s.Prepare(insertSQL)
+	if err != nil {
+		return err
+	}
+
+	seconds := message.Meta.CreationTime.Seconds
+	nanos := message.Meta.CreationTime.Nanos
+
+	if _, err = statement.Exec(message.Key.Type, message.Key.Name, message.Key.Namespace, message.Content, message.Meta.Owner, seconds, nanos); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (m *SqliteMemory) Delete(key *api.Key) error {
-	return m.delete(key)
+func (s *Sqlite) get(key *api.Key) (*api.Message, error) {
+	selectStatement := `SELECT * FROM message WHERE type = ? AND name = ? AND namespace = ?`
+
+	rows, err := s.Query(selectStatement, key.Type, key.Name, key.Namespace)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	flag := false
+	var seconds, nanos int
+	messageR := api.Message{
+		Content: "",
+		Key:     &api.Key{},
+		Meta:    &api.Meta{},
+	}
+
+	for rows.Next() {
+		flag = true
+		err = rows.Scan(&messageR.Key.Type, &messageR.Key.Name, &messageR.Key.Namespace, &messageR.Content, &messageR.Meta.Owner, &seconds, &nanos)
+		if err != nil {
+			return nil, err
+		}
+		messageR.Meta.CreationTime = s.marshalTimestamp(seconds, nanos)
+	}
+
+	if !flag {
+		return nil, status.Errorf(codes.NotFound, "message with key=%v does not exist", key)
+	}
+
+	return &messageR, nil
 }
 
-func (m *SqliteMemory) DeleteAll(key *api.Key) error {
-	return m.deleteAll(key)
+func (s *Sqlite) getAll(key *api.Key) ([]*api.Message, error) {
+	selectStatement := `SELECT * FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
+
+	t, n, ns := s.makeKey(key)
+
+	rows, err := s.Query(selectStatement, t, n, ns)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var messages []*api.Message
+	for rows.Next() {
+
+		messageR := api.Message{
+			Content: "",
+			Key:     &api.Key{},
+			Meta:    &api.Meta{},
+		}
+		var seconds, nanos int
+
+		err = rows.Scan(&messageR.Key.Type, &messageR.Key.Name, &messageR.Key.Namespace, &messageR.Content, &messageR.Meta.Owner, &seconds, &nanos)
+		if err != nil {
+			return nil, err
+		}
+
+		messageR.Meta.CreationTime = s.marshalTimestamp(seconds, nanos)
+		messages = append(messages, &messageR)
+	}
+
+	return messages, nil
 }
 
-func (m *SqliteMemory) Get(key *api.Key) (*api.Message, error) {
-	return m.get(key)
+func (s *Sqlite) delete(key *api.Key) error {
+	deleteStatement := `DELETE FROM message WHERE type = ? AND name = ? AND namespace = ? `
+
+	statement, err := s.Prepare(deleteStatement)
+	if err != nil {
+		return err
+	}
+
+	if _, err = statement.Exec(key.Type, key.Name, key.Namespace); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (m *SqliteMemory) GetAll(key *api.Key) ([]*api.Message, error) {
-	return m.getAll(key)
+func (s *Sqlite) deleteAll(key *api.Key) error {
+	deleteStatement := `DELETE FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
+
+	statement, err := s.Prepare(deleteStatement)
+	if err != nil {
+		return err
+	}
+
+	t, n, ns := s.makeKey(key)
+
+	if _, err = statement.Exec(t, n, ns); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (m *SqliteMemory) createDBFile(path string) error {
-	if path == ":memory:" {
+func (s *Sqlite) prepare(path string) error {
+	err := s.createDBFile(path)
+	if err != nil {
+		return err
+	}
+
+	err = s.open(path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Sqlite) createDBFile(path string) error {
+	if path == memoryPath {
 		return nil
 	}
+
 	file, err := os.Create(path)
+	defer file.Close()
 	if err != nil {
 		return err
 	}
-	file.Close()
+
 	return nil
 }
 
-func (m *SqliteMemory) open(path string) error {
+func (s *Sqlite) open(path string) error {
 	db, err := sql.Open("sqlite3", path)
-	m.db = db
 	if err != nil {
 		return err
 	}
+
+	s.DB = db
 	return nil
 }
 
-func (m *SqliteMemory) prepare(path string) error {
-	// Create db file
-	err := sqlite.createDBFile(path)
-	if err != nil {
+func (s *Sqlite) setupTables(config *config.Config) error {
+	if err := s.createCredentialsTable(); err != nil {
 		return err
 	}
 
-	// Open the sqlite file
-	err = sqlite.open(path)
-	if err != nil {
+	if err := s.createRolesTable(); err != nil {
+		return err
+	}
+
+	if err := s.createMessageTable(); err != nil {
+		return err
+	}
+
+	if err := s.fillRolesTable(config); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *SqliteMemory) createTable() error {
+func (s *Sqlite) createCredentialsTable() error {
+	createMessageTable := `CREATE TABLE roles (
+		"id" TEXT,
+		"role" TEXT,
+		"token" TEXT,
+		PRIMARY KEY (id, token)
+	);`
+
+	statement, err := s.Prepare(createMessageTable)
+	if err != nil {
+		return err
+	}
+
+	if _, err = statement.Exec(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Sqlite) fillCredentialsTable(config *config.Config) error {
+	for _, cred := range config.Credentials {
+		insertSQL := `INSERT INTO credentials VALUES (?, ?, ?)`
+
+		statement, err := s.Prepare(insertSQL)
+		if err != nil {
+			return err
+		}
+
+		if _, err = statement.Exec(cred.ID, cred.Role, cred.Token); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Sqlite) createRolesTable() error {
+	createMessageTable := `CREATE TABLE credentials (
+		"role" TEXT,
+		"type" TEXT,
+		"name" TEXT,
+		"namespace" TEXT,
+		"method" TEXT,
+	);`
+
+	statement, err := s.Prepare(createMessageTable)
+	if err != nil {
+		return err
+	}
+
+	if _, err = statement.Exec(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Sqlite) fillRolesTable(config *config.Config) error {
+	for _, rule := range config.Roles.Director {
+		for _, method := range rule.Methods {
+			insertSQL := `INSERT INTO roles VALUES (?, ?, ?, ?, ?)`
+
+			statement, err := s.Prepare(insertSQL)
+			if err != nil {
+				return err
+			}
+
+			if _, err = statement.Exec(types.DirectorRole, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *Sqlite) createMessageTable() error {
 	createMessageTable := `CREATE TABLE message (
 		"type" TEXT,
 		"name" TEXT,
@@ -105,217 +378,42 @@ func (m *SqliteMemory) createTable() error {
 		"creationtimeseconds" INTEGER,
 		"creationtimenanos" INTEGER,
 		PRIMARY KEY (type, name, namespace)
-	  );`
+	);`
 
-	statement, err := m.db.Prepare(createMessageTable)
-	if err != nil {
-		return err
-	}
-	_, err = statement.Exec()
+	statement, err := s.Prepare(createMessageTable)
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (m *SqliteMemory) put(message *api.Message) error {
-	err := m.validateMessage(message)
-	if err != nil {
-		return err
-	}
-
-	insertSQL := `INSERT INTO message VALUES (?, ?, ?, ?, ?, ?, ?)`
-	statement, err := m.db.Prepare(insertSQL)
-	if err != nil {
-		return err
-	}
-	seconds, nanos, err := m.unmarshalTimestamp(message.Meta.CreationTime.String())
-	if err != nil {
-		return err
-	}
-	_, err = statement.Exec(message.Key.Type, message.Key.Name, message.Key.Namespace, message.Content, message.Meta.Owner, seconds, nanos)
-	if err != nil {
+	if _, err = statement.Exec(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *SqliteMemory) get(key *api.Key) (*api.Message, error) {
-	err := m.validateKey(key)
-	if err != nil {
-		return nil, err
-	}
-
-	selectStatement := `SELECT * FROM message WHERE type = ? AND name = ? AND namespace = ?`
-	row, err := m.db.Query(selectStatement, key.Type, key.Name, key.Namespace)
-	if err != nil {
-		return nil, err
-	}
-	defer row.Close()
-	flag := false
-	keyR := api.Key{}
-	metaR := api.Meta{}
-	messageR := api.Message{
-		Content: "",
-		Key:     &keyR,
-		Meta:    &metaR,
-	}
-	for row.Next() {
-		flag = true
-		var seconds, nanos int
-		err = row.Scan(&messageR.Key.Type, &messageR.Key.Name, &messageR.Key.Namespace, &messageR.Content, &messageR.Meta.Owner, &seconds, &nanos)
-		if err != nil {
-			return nil, err
-		}
-		messageR.Meta.CreationTime = m.marshalTimestamp(seconds, nanos)
-	}
-	if !flag {
-		return nil, fmt.Errorf("object with key=%v does not exist", *key)
-	}
-
-	return &messageR, nil
-}
-
-func (m *SqliteMemory) delete(key *api.Key) error {
-	err := m.validateKey(key)
-	if err != nil {
-		return err
-	}
-
-	deleteStatement := `DELETE FROM message WHERE type = ? AND name = ? AND namespace = ? `
-	statement, err := m.db.Prepare(deleteStatement)
-	if err != nil {
-		return err
-	}
-	_, err = statement.Exec(key.Type, key.Name, key.Namespace)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m *SqliteMemory) deleteAll(key *api.Key) error {
-
-	deleteStatement := `DELETE FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
-	statement, err := m.db.Prepare(deleteStatement)
-	if err != nil {
-		return err
-	}
-	var t, n, ns string
-	if key.Type == "" {
-		t = "%"
-	} else {
-		t = key.Type
-	}
-	if key.Name == "" {
-		n = "%"
-	} else {
-		n = key.Name
-	}
-	if key.Namespace == "" {
-		ns = "%"
-	} else {
-		ns = key.Namespace
-	}
-	_, err = statement.Exec(t, n, ns)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m *SqliteMemory) getAll(key *api.Key) ([]*api.Message, error) {
-	selectStatement := `SELECT * FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
-	var t, n, ns string
-	if key.Type == "" {
-		t = "%"
-	} else {
-		t = key.Type
-	}
-	if key.Name == "" {
-		n = "%"
-	} else {
-		n = key.Name
-	}
-	if key.Namespace == "" {
-		ns = "%"
-	} else {
-		ns = key.Namespace
-	}
-	row, err := m.db.Query(selectStatement, t, n, ns)
-	if err != nil {
-		return nil, err
-	}
-	defer row.Close()
-	var messages []*api.Message
-	for row.Next() {
-		keyR := api.Key{}
-		metaR := api.Meta{}
-		messageR := api.Message{
-			Content: "",
-			Key:     &keyR,
-			Meta:    &metaR,
-		}
-		var seconds, nanos int
-		err = row.Scan(&messageR.Key.Type, &messageR.Key.Name, &messageR.Key.Namespace, &messageR.Content, &messageR.Meta.Owner, &seconds, &nanos)
-		if err != nil {
-			return nil, err
-		}
-		messageR.Meta.CreationTime = m.marshalTimestamp(seconds, nanos)
-		messages = append(messages, &messageR)
-	}
-	if len(messages) == 0 {
-		return nil, fmt.Errorf("object with key=%v does not exist", *key)
-	}
-
-	return messages, nil
-}
-
-func (m *SqliteMemory) validateKey(key *api.Key) error {
-	if key.Name == "" {
-		return fmt.Errorf("invalid key with empty Name")
-	}
-	if key.Namespace == "" {
-		return fmt.Errorf("invalid key with empty Namespace")
-	}
-	if key.Type == "" {
-		return fmt.Errorf("invalid key with empty Type")
-	}
-	return nil
-}
-
-func (m *SqliteMemory) validateMessage(message *api.Message) error {
-	if message.Key == nil {
-		return fmt.Errorf("Invalid message with empty key")
-	}
-	if err := m.validateKey(message.Key); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m *SqliteMemory) unmarshalTimestamp(t string) (int, int, error) {
-	str := strings.Split(t, " ")
-	if len(str) != 2 {
-		str = strings.Split(t, "  ")
-	}
-	seconds, err := strconv.Atoi(strings.Split(str[0], ":")[1])
-	if err != nil {
-		return -1, -1, err
-	}
-	nanos, err := strconv.Atoi(strings.Split(str[1], ":")[1])
-	if err != nil {
-		return -1, -1, err
-	}
-	return seconds, nanos, nil
-}
-
-func (m *SqliteMemory) marshalTimestamp(seconds, nanos int) *timestamp.Timestamp {
-	finalT := timestamppb.Timestamp{
+func (s *Sqlite) marshalTimestamp(seconds, nanos int) *timestamp.Timestamp {
+	return &timestamppb.Timestamp{
 		Seconds: int64(seconds),
 		Nanos:   int32(nanos),
 	}
-	return &finalT
+}
+
+func (s *Sqlite) makeKey(key *api.Key) (string, string, string) {
+	t := key.Type
+	if t == "" {
+		t = "%"
+	}
+
+	n := key.Name
+	if n == "" {
+		n = "%"
+	}
+
+	ns := key.Namespace
+	if ns == "" {
+		ns = "%"
+	}
+
+	return t, n, ns
 }

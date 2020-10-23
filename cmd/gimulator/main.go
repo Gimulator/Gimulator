@@ -2,12 +2,19 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path"
 	"runtime"
 
+	"github.com/Gimulator/Gimulator/api"
+	"github.com/Gimulator/Gimulator/auth"
 	"github.com/Gimulator/Gimulator/config"
+	"github.com/Gimulator/Gimulator/simulator"
+	"github.com/Gimulator/Gimulator/storage"
+	proto "github.com/Gimulator/protobuf/go/api"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 )
 
 func sort(str []string) {
@@ -35,15 +42,45 @@ func init() {
 }
 
 func main() {
-	rolesPath := os.Getenv("GIMULATOR_ROLES_PATH")
-	roles, err := config.NewRoles(rolesPath)
+	configDir := os.Getenv("GIMULATOR_CONFIG_Dir")
+	config, err := config.NewConfig(configDir)
 	if err != nil {
 		panic(err)
 	}
 
-	credsPath := os.Getenv("GIMULATOR_CREDENTIALS_PATH")
-	creds, err := config.NewCredentials(credsPath)
+	storage, err := storage.NewSqlite(":memory:", config)
 	if err != nil {
+		panic(err)
+	}
+
+	simulator, err := simulator.NewSimulator(storage)
+	if err != nil {
+		panic(err)
+	}
+
+	auther, err := auth.NewAuther(storage)
+	if err != nil {
+		panic(err)
+	}
+
+	server, err := api.NewServer(auther, simulator)
+	if err != nil {
+		panic(err)
+	}
+
+	port := os.Getenv("GIMULATOR_SERVICE_PORT")
+	if port == "" {
+		port = "23579"
+	}
+
+	listen, err := net.Listen("tcp", port)
+	if err != nil {
+		panic(err)
+	}
+
+	s := grpc.NewServer()
+	proto.RegisterAPIServer(s, server)
+	if err := s.Serve(listen); err != nil {
 		panic(err)
 	}
 }
