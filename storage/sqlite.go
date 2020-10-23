@@ -14,8 +14,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// TODO : Marshal timestamp
-
 type SqliteMemory struct {
 	db *sql.DB
 }
@@ -298,7 +296,7 @@ func (m *SqliteMemory) validateMessage(message *api.Message) error {
 	return nil
 }
 
-func (m *SqliteMemory) UnmarshalTimestamp(t string) (int, int, error) {
+func (m *SqliteMemory) unmarshalTimestamp(t string) (int, int, error) {
 	str := strings.Split(t, " ")
 	if len(str) != 2 {
 		str = strings.Split(t, "  ")
@@ -314,7 +312,7 @@ func (m *SqliteMemory) UnmarshalTimestamp(t string) (int, int, error) {
 	return seconds, nanos, nil
 }
 
-func (m *SqliteMemory) MarshalTimestamp(seconds, nanos int) *timestamp.Timestamp {
+func (m *SqliteMemory) marshalTimestamp(seconds, nanos int) *timestamp.Timestamp {
 	finalT := timestamppb.Timestamp{
 		Seconds: int64(seconds),
 		Nanos:   int32(nanos),
