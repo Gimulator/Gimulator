@@ -15,6 +15,7 @@ import (
 	proto "github.com/Gimulator/protobuf/go/api"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	//_ "github.com/mattn/go-sqlite3"
 )
 
 func sort(str []string) {

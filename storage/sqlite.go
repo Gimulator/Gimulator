@@ -8,6 +8,7 @@ import (
 	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	_ "github.com/mattn/go-sqlite3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -118,9 +119,15 @@ func (s *Sqlite) getRules(role string, method types.Method) ([]*api.Key, error) 
 }
 
 func (s *Sqlite) put(message *api.Message) error {
-	insertSQL := `INSERT INTO message VALUES (?, ?, ?, ?, ?, ?, ?)`
+	insertorignore := `INSERT OR IGNORE INTO message VALUES (?, ?, ?, ?, ?, ?, ?)`
+	updateSQL := `UPDATE message SET content = ?, owner = ?, creationtimeseconds = ?, creationtimenanos = ?
+				WHERE type = ? AND name = ? AND namespace = ?; `
 
-	statement, err := s.Prepare(insertSQL)
+	statementInsert, err := s.Prepare(insertorignore)
+	if err != nil {
+		return err
+	}
+	statementUpdate, err := s.Prepare(updateSQL)
 	if err != nil {
 		return err
 	}
@@ -128,7 +135,12 @@ func (s *Sqlite) put(message *api.Message) error {
 	seconds := message.Meta.CreationTime.Seconds
 	nanos := message.Meta.CreationTime.Nanos
 
-	if _, err = statement.Exec(message.Key.Type, message.Key.Name, message.Key.Namespace, message.Content, message.Meta.Owner, seconds, nanos); err != nil {
+	_, err = statementInsert.Exec(message.Key.Type, message.Key.Name, message.Key.Namespace, message.Content, message.Meta.Owner, seconds, nanos)
+	if err != nil {
+		return err
+	}
+	_, err = statementUpdate.Exec(message.Content, message.Meta.Owner, seconds, nanos, message.Key.Type, message.Key.Name, message.Key.Namespace)
+	if err != nil {
 		return err
 	}
 
