@@ -45,7 +45,7 @@ func init() {
 func main() {
 	log := logrus.WithField("component", "main")
 
-	configDir := os.Getenv("GIMULATOR_CONFIG_Dir")
+	configDir := os.Getenv("GIMULATOR_CONFIG_DIR")
 	log.WithField("config-dir", configDir).Info("starting to setup configs")
 	config, err := config.NewConfig(configDir)
 	if err != nil {
