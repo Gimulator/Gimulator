@@ -36,7 +36,7 @@ func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 	log.Info("starting to extract token from context")
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
-		log.WithError(err).Info("could not extract token form context")
+		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func (s *Server) GetAll(key *api.Key, stream api.API_GetAllServer) error {
 	ctx := stream.Context()
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
-		log.WithError(err).Info("could not extract token form context")
+		log.WithError(err).Error("could not extract token form context")
 
 		return err
 	}
@@ -128,7 +128,7 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 	log.Info("starting to extract token from context")
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
-		log.WithError(err).Info("could not extract token form context")
+		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
@@ -174,7 +174,7 @@ func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error)
 	log.Info("starting to extract token from context")
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
-		log.WithError(err).Info("could not extract token form context")
+		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
@@ -214,7 +214,7 @@ func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, err
 	log.Info("starting to extract token from context")
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
-		log.WithError(err).Info("could not extract token form context")
+		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
@@ -255,7 +255,7 @@ func (s *Server) Watch(key *api.Key, stream api.API_WatchServer) error {
 	ctx := stream.Context()
 	token, err := s.ExtractTokenFromContext(ctx)
 	if err != nil {
-		log.WithError(err).Info("could not extract token form context")
+		log.WithError(err).Error("could not extract token form context")
 		return err
 	}
 
@@ -279,14 +279,8 @@ func (s *Server) Watch(key *api.Key, stream api.API_WatchServer) error {
 		return err
 	}
 
-	send := &simulator.Channel{
-		Ch:       make(chan *api.Message),
-		IsClosed: false,
-	}
-	defer func() {
-		send.IsClosed = true
-		close(send.Ch)
-	}()
+	send := simulator.NewChannel()
+	defer send.Close()
 
 	log.Info("starting to process incoming request")
 	if err := s.simulator.Watch(key, send); err != nil {
