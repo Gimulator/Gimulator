@@ -24,8 +24,9 @@ type RoleStorage interface {
 }
 
 type User struct {
-	ID     string
-	Token  string
-	Role   string
-	Status types.Status
+	ID        string
+	Token     string
+	Role      string
+	Readiness bool
+	Status    types.Status
 }

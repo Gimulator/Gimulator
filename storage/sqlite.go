@@ -103,6 +103,7 @@ func (s *Sqlite) createUserTable() error {
 		"role" TEXT,
 		"token" TEXT,
 		"status" TEXT,
+		"readiness" BOOLEAN,
 		PRIMARY KEY (id, token)
 	);`
 
@@ -167,14 +168,14 @@ func (s *Sqlite) createMessageTable() error {
 
 func (s *Sqlite) fillUserTable(config *config.Config) error {
 	for _, cred := range config.Credentials {
-		query := `INSERT INTO user VALUES (?, ?, ?, ?)`
+		query := `INSERT INTO user VALUES (?, ?, ?, ?, ?)`
 
 		stmt, err := s.Prepare(query)
 		if err != nil {
 			return err
 		}
 
-		if _, err = stmt.Exec(cred.ID, cred.Role, cred.Token, types.StatusUnknown); err != nil {
+		if _, err = stmt.Exec(cred.ID, cred.Role, cred.Token, types.StatusUnknown, false); err != nil {
 			return err
 		}
 	}
@@ -373,6 +374,10 @@ func (s *Sqlite) UpdateUserStatus(id string, status types.Status) error {
 	return s.updateUserStatus(id, status)
 }
 
+func (s *Sqlite) UpdateUserReadiness(id string, isReady bool) error {
+	return s.updateUserReadiness(id, isReady)
+}
+
 func (s *Sqlite) getUserWithToken(token string) (*User, error) {
 	selectStatement := `SELECT * FROM user WHERE token = ?`
 
@@ -388,7 +393,7 @@ func (s *Sqlite) getUserWithToken(token string) (*User, error) {
 	for rows.Next() {
 		flag = true
 
-		err = rows.Scan(user.ID, user.Role, user.Token, user.Status)
+		err = rows.Scan(user.ID, user.Role, user.Token, user.Status, user.Readiness)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
 		}
@@ -416,7 +421,7 @@ func (s *Sqlite) getUserWithID(id string) (*User, error) {
 	for rows.Next() {
 		flag = true
 
-		err = rows.Scan(user.ID, user.Role, user.Token, user.Status)
+		err = rows.Scan(user.ID, user.Role, user.Token, user.Status, user.Readiness)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
 		}
@@ -438,6 +443,21 @@ func (s *Sqlite) updateUserStatus(id string, st types.Status) error {
 	}
 
 	if _, err = stmt.Exec(st, id); err != nil {
+		return status.Errorf(codes.Internal, "could not execute statement on database: %v", err)
+	}
+
+	return nil
+}
+
+func (s *Sqlite) updateUserReadiness(id string, isReady bool) error {
+	query := `UPDATE user SET readiness = ? WHERE id = ?`
+
+	stmt, err := s.Prepare(query)
+	if err != nil {
+		return status.Errorf(codes.Internal, "could not prepare statement for database: %v", err)
+	}
+
+	if _, err = stmt.Exec(isReady, id); err != nil {
 		return status.Errorf(codes.Internal, "could not execute statement on database: %v", err)
 	}
 
