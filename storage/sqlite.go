@@ -64,7 +64,7 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	s.DB = db
 
 	s.log.Info("starting to create credential table")
-	if err := s.createCredentialTable(); err != nil {
+	if err := s.createUserTable(); err != nil {
 		s.log.WithError(err).Error("could not create credential table")
 		return err
 	}
@@ -82,7 +82,7 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	}
 
 	s.log.Info("starting to fill credential table")
-	if err := s.fillCredentialTable(config); err != nil {
+	if err := s.fillUserTable(config); err != nil {
 		s.log.WithError(err).Error("could not fill credential table")
 		return err
 	}
@@ -96,12 +96,13 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	return nil
 }
 
-func (s *Sqlite) createCredentialTable() error {
+func (s *Sqlite) createUserTable() error {
 	query := `
-	CREATE TABLE credentials (
+	CREATE TABLE user (
 		"id" TEXT,
 		"role" TEXT,
 		"token" TEXT,
+		"status" TEXT,
 		PRIMARY KEY (id, token)
 	);`
 
@@ -119,7 +120,7 @@ func (s *Sqlite) createCredentialTable() error {
 
 func (s *Sqlite) createRoleTable() error {
 	query := `
-	CREATE TABLE roles (
+	CREATE TABLE role (
 		"role" TEXT,
 		"type" TEXT,
 		"name" TEXT,
@@ -164,16 +165,16 @@ func (s *Sqlite) createMessageTable() error {
 	return nil
 }
 
-func (s *Sqlite) fillCredentialTable(config *config.Config) error {
+func (s *Sqlite) fillUserTable(config *config.Config) error {
 	for _, cred := range config.Credentials {
-		query := `INSERT INTO credentials VALUES (?, ?, ?)`
+		query := `INSERT INTO user VALUES (?, ?, ?, ?)`
 
 		stmt, err := s.Prepare(query)
 		if err != nil {
 			return err
 		}
 
-		if _, err = stmt.Exec(cred.ID, cred.Role, cred.Token); err != nil {
+		if _, err = stmt.Exec(cred.ID, cred.Role, cred.Token, types.StatusUnknown); err != nil {
 			return err
 		}
 	}
@@ -184,7 +185,7 @@ func (s *Sqlite) fillCredentialTable(config *config.Config) error {
 func (s *Sqlite) fillRoleTable(config *config.Config) error {
 	for _, rule := range config.Roles.Director {
 		for _, method := range rule.Methods {
-			insertSQL := `INSERT INTO roles VALUES (?, ?, ?, ?, ?)`
+			insertSQL := `INSERT INTO role VALUES (?, ?, ?, ?, ?)`
 
 			stmt, err := s.Prepare(insertSQL)
 			if err != nil {
@@ -200,7 +201,7 @@ func (s *Sqlite) fillRoleTable(config *config.Config) error {
 	for role, rules := range config.Roles.Actors {
 		for _, rule := range rules {
 			for _, method := range rule.Methods {
-				insertSQL := `INSERT INTO roles VALUES (?, ?, ?, ?, ?)`
+				insertSQL := `INSERT INTO role VALUES (?, ?, ?, ?, ?)`
 
 				stmt, err := s.Prepare(insertSQL)
 				if err != nil {
@@ -357,39 +358,90 @@ func (s *Sqlite) deleteAll(key *api.Key) error {
 }
 
 /////////////////////////////////////////////
-////////////////////// CredentialsStorage ///
+///////////////////////////// UserStorage ///
 /////////////////////////////////////////////
 
-func (s *Sqlite) GetCredWithToken(token string) (string, string, error) {
-	return s.getCredWithToken(token)
+func (s *Sqlite) GetUserWithToken(token string) (*User, error) {
+	return s.getUserWithToken(token)
 }
 
-func (s *Sqlite) getCredWithToken(token string) (string, string, error) {
-	selectStatement := `SELECT id, role FROM credentials WHERE token = ?`
+func (s *Sqlite) GetUserWithID(id string) (*User, error) {
+	return s.getUserWithID(id)
+}
+
+func (s *Sqlite) UpdateUserStatus(id string, status types.Status) error {
+	return s.updateUserStatus(id, status)
+}
+
+func (s *Sqlite) getUserWithToken(token string) (*User, error) {
+	selectStatement := `SELECT * FROM user WHERE token = ?`
 
 	rows, err := s.Query(selectStatement, token)
 	if err != nil {
-		return "", "", status.Errorf(codes.Internal, "could not query database: %v", err)
+		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
 	}
 	defer rows.Close()
 
-	var id, role string
+	user := &User{}
 	flag := false
 
 	for rows.Next() {
 		flag = true
 
-		err = rows.Scan(&id, &role)
+		err = rows.Scan(user.ID, user.Role, user.Token, user.Status)
 		if err != nil {
-			return "", "", status.Errorf(codes.Internal, "could not scan results of query: %v", err)
+			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
 		}
 	}
 
 	if !flag {
-		return "", "", status.Errorf(codes.NotFound, "")
+		return nil, status.Errorf(codes.NotFound, "")
 	}
 
-	return id, role, nil
+	return user, nil
+}
+
+func (s *Sqlite) getUserWithID(id string) (*User, error) {
+	selectStatement := `SELECT * FROM user WHERE id = ?`
+
+	rows, err := s.Query(selectStatement, id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
+	}
+	defer rows.Close()
+
+	user := &User{}
+	flag := false
+
+	for rows.Next() {
+		flag = true
+
+		err = rows.Scan(user.ID, user.Role, user.Token, user.Status)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
+		}
+	}
+
+	if !flag {
+		return nil, status.Errorf(codes.NotFound, "")
+	}
+
+	return user, nil
+}
+
+func (s *Sqlite) updateUserStatus(id string, st types.Status) error {
+	query := `UPDATE user SET status = ? WHERE id = ?`
+
+	stmt, err := s.Prepare(query)
+	if err != nil {
+		return status.Errorf(codes.Internal, "could not prepare statement for database: %v", err)
+	}
+
+	if _, err = stmt.Exec(st, id); err != nil {
+		return status.Errorf(codes.Internal, "could not execute statement on database: %v", err)
+	}
+
+	return nil
 }
 
 /////////////////////////////////////////////
@@ -401,7 +453,7 @@ func (s *Sqlite) GetRules(role string, method types.Method) ([]*api.Key, error) 
 }
 
 func (s *Sqlite) getRules(role string, method types.Method) ([]*api.Key, error) {
-	selectStatement := `SELECT type, name, namespace FROM roles WHERE role = ? AND method = ?`
+	selectStatement := `SELECT type, name, namespace FROM role WHERE role = ? AND method = ?`
 
 	rows, err := s.Query(selectStatement, role, method)
 	if err != nil {

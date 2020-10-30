@@ -16,14 +16,14 @@ import (
 
 type Server struct {
 	api.UnimplementedAPIServer
-	auther    *auth.Auther
+	um        *auth.UserManager
 	simulator *simulator.Simulator
 	log       *logrus.Entry
 }
 
-func NewServer(auther *auth.Auther, sim *simulator.Simulator) (*Server, error) {
+func NewServer(um *auth.UserManager, sim *simulator.Simulator) (*Server, error) {
 	return &Server{
-		auther:    auther,
+		um:        um,
 		simulator: sim,
 		log:       logrus.WithField("component", "api"),
 	}, nil
@@ -41,15 +41,15 @@ func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 	}
 
 	log.Info("starting to authenticate incoming request")
-	id, role, err := s.auther.Authenticate(token)
+	user, err := s.um.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
 		return nil, err
 	}
-	log = log.WithField("id", id).WithField("role", role)
+	log = log.WithField("id", user.ID).WithField("role", user.Role)
 
 	log.Info("starting to authorize incoming request")
-	if err := s.auther.Authorize(role, types.GetMethod, key); err != nil {
+	if err := s.um.Authorize(user.Role, types.GetMethod, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
@@ -84,15 +84,15 @@ func (s *Server) GetAll(key *api.Key, stream api.API_GetAllServer) error {
 	}
 
 	log.Info("starting to authenticate incoming request")
-	id, role, err := s.auther.Authenticate(token)
+	user, err := s.um.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
 		return err
 	}
-	log = log.WithField("id", id).WithField("role", role)
+	log = log.WithField("id", user.ID).WithField("role", user.Role)
 
 	log.Info("starting to authorize incoming request")
-	if err := s.auther.Authorize(role, types.GetAllMethod, key); err != nil {
+	if err := s.um.Authorize(user.Role, types.GetAllMethod, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return err
 	}
@@ -133,15 +133,15 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 	}
 
 	log.Info("starting to authenticate incoming request")
-	id, role, err := s.auther.Authenticate(token)
+	user, err := s.um.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
 		return nil, err
 	}
-	log = log.WithField("id", id).WithField("role", role)
+	log = log.WithField("id", user.ID).WithField("role", user.Role)
 
 	log.Info("starting to authorize incoming request")
-	if err := s.auther.Authorize(role, types.PutMethod, message.Key); err != nil {
+	if err := s.um.Authorize(user.Role, types.PutMethod, message.Key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 	}
 
 	log.Info("starting to setup message")
-	if err := s.auther.SetupMessage(token, message); err != nil {
+	if err := s.um.SetupMessage(token, message); err != nil {
 		log.WithError(err).Error("could not setup message")
 		return nil, err
 	}
@@ -179,15 +179,15 @@ func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error)
 	}
 
 	log.Info("starting to authenticate incoming request")
-	id, role, err := s.auther.Authenticate(token)
+	user, err := s.um.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
 		return nil, err
 	}
-	log = log.WithField("id", id).WithField("role", role)
+	log = log.WithField("id", user.ID).WithField("role", user.Role)
 
 	log.Info("starting to authorize incoming request")
-	if err := s.auther.Authorize(role, types.DeleteMethod, key); err != nil {
+	if err := s.um.Authorize(user.Role, types.DeleteMethod, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
@@ -219,15 +219,15 @@ func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, err
 	}
 
 	log.Info("starting to authenticate incoming request")
-	id, role, err := s.auther.Authenticate(token)
+	user, err := s.um.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
 		return nil, err
 	}
-	log = log.WithField("id", id).WithField("role", role)
+	log = log.WithField("id", user.ID).WithField("role", user.Role)
 
 	log.Info("starting to authorize incoming request")
-	if err := s.auther.Authorize(role, types.DeleteAllMethod, key); err != nil {
+	if err := s.um.Authorize(user.Role, types.DeleteAllMethod, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
@@ -260,15 +260,15 @@ func (s *Server) Watch(key *api.Key, stream api.API_WatchServer) error {
 	}
 
 	log.Info("starting to authenticate incoming request")
-	id, role, err := s.auther.Authenticate(token)
+	user, err := s.um.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
 		return err
 	}
-	log = log.WithField("id", id).WithField("role", role)
+	log = log.WithField("id", user.ID).WithField("role", user.Role)
 
 	log.Info("starting to authorize incoming request")
-	if err := s.auther.Authorize(role, types.WatchMethod, key); err != nil {
+	if err := s.um.Authorize(user.Role, types.WatchMethod, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return err
 	}

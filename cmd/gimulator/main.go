@@ -54,28 +54,28 @@ func main() {
 	}
 
 	log.Info("starting to setup sqlite")
-	storage, err := storage.NewSqlite(":memory:", config)
+	sqlite, err := storage.NewSqlite(":memory:", config)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup sqlite")
 		panic(err)
 	}
 
 	log.Info("starting to setup simulator")
-	simulator, err := simulator.NewSimulator(storage)
+	simulator, err := simulator.NewSimulator(sqlite)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup simulator")
 		panic(err)
 	}
 
 	log.Info("starting to setup auther")
-	auther, err := auth.NewAuther(storage)
+	um, err := auth.NewUserManager(sqlite, sqlite)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup auther")
 		panic(err)
 	}
 
 	log.Info("starting to setup server")
-	server, err := api.NewServer(auther, simulator)
+	server, err := api.NewServer(um, simulator)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup server")
 		panic(err)

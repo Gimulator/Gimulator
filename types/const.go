@@ -18,3 +18,11 @@ const (
 	DeleteAllMethod Method = "delete-all"
 	WatchMethod     Method = "watch"
 )
+
+type Status string
+
+const (
+	StatusRunning Status = "running"
+	StatusFailed  Status = "failed"
+	StatusUnknown Status = "unknown"
+)

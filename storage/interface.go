@@ -13,15 +13,19 @@ type MessageStorage interface {
 	GetAll(*api.Key) ([]*api.Message, error)
 }
 
-type CredentialStorage interface {
-	GetCredWithToken(string) (string, string, error)
+type UserStorage interface {
+	GetUserWithToken(string) (*User, error)
+	GetUserWithID(string) (*User, error)
+	UpdateUserStatus(string, types.Status) error
 }
 
 type RoleStorage interface {
 	GetRules(string, types.Method) ([]*api.Key, error)
 }
 
-type AuthStorage interface {
-	CredentialStorage
-	RoleStorage
+type User struct {
+	ID     string
+	Token  string
+	Role   string
+	Status types.Status
 }

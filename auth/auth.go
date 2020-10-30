@@ -16,29 +16,31 @@ const (
 	defaultCleanupInterval = time.Second * 180
 )
 
-type Auther struct {
-	storage storage.AuthStorage
+type UserManager struct {
+	userStorage storage.UserStorage
+	roleStorage storage.RoleStorage
 }
 
-func NewAuther(storage storage.AuthStorage) (*Auther, error) {
-	return &Auther{
-		storage: storage,
+func NewUserManager(credStorage storage.UserStorage, roleStorage storage.RoleStorage) (*UserManager, error) {
+	return &UserManager{
+		userStorage: credStorage,
+		roleStorage: roleStorage,
 	}, nil
 }
 
-func (a *Auther) Authenticate(token string) (string, string, error) {
-	id, role, err := a.storage.GetCredWithToken(token)
+func (a *UserManager) Authenticate(token string) (*storage.User, error) {
+	user, err := a.userStorage.GetUserWithToken(token)
 	if err == nil {
-		return id, role, nil
+		return user, nil
 	}
 
 	if status.Code(err) == codes.NotFound {
-		return "", "", status.Errorf(codes.Unauthenticated, "invalid token")
+		return user, status.Errorf(codes.Unauthenticated, "invalid token")
 	}
-	return "", "", err
+	return user, err
 }
 
-func (a *Auther) Authorize(role string, method types.Method, key *api.Key) error {
+func (a *UserManager) Authorize(role string, method types.Method, key *api.Key) error {
 	if role == "" {
 		return status.Errorf(codes.Unauthenticated, "couldn't find role based on id")
 	}
@@ -55,8 +57,25 @@ func (a *Auther) Authorize(role string, method types.Method, key *api.Key) error
 	}
 }
 
-func (a *Auther) validateDirectorAction(method types.Method, key *api.Key) error {
-	keys, err := a.storage.GetRules(string(types.DirectorRole), method)
+func (a *UserManager) UpdateStatus(id string, st types.Status) error {
+	if err := a.userStorage.UpdateUserStatus(id, st); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *UserManager) GetStatus(id string) (types.Status, error) {
+	user, err := a.userStorage.GetUserWithID(id)
+	if err != nil {
+		return types.StatusUnknown, err
+	}
+
+	return user.Status, nil
+}
+
+func (a *UserManager) validateDirectorAction(method types.Method, key *api.Key) error {
+	keys, err := a.roleStorage.GetRules(string(types.DirectorRole), method)
 	if err != nil {
 		return err
 	}
@@ -70,16 +89,16 @@ func (a *Auther) validateDirectorAction(method types.Method, key *api.Key) error
 	return status.Errorf(codes.PermissionDenied, "")
 }
 
-func (a *Auther) validateMasterAction(method types.Method, key *api.Key) error {
+func (a *UserManager) validateMasterAction(method types.Method, key *api.Key) error {
 	return nil
 }
 
-func (a *Auther) validateOperatorAction(method types.Method, key *api.Key) error {
+func (a *UserManager) validateOperatorAction(method types.Method, key *api.Key) error {
 	return nil
 }
 
-func (a *Auther) validateActorAction(role string, method types.Method, key *api.Key) error {
-	keys, err := a.storage.GetRules(role, method)
+func (a *UserManager) validateActorAction(role string, method types.Method, key *api.Key) error {
+	keys, err := a.roleStorage.GetRules(role, method)
 	if err != nil {
 		return err
 	}
@@ -93,22 +112,22 @@ func (a *Auther) validateActorAction(role string, method types.Method, key *api.
 	return status.Errorf(codes.PermissionDenied, "")
 }
 
-func (a *Auther) SetupMessage(token string, message *api.Message) error {
-	role, id, err := a.storage.GetCredWithToken(token)
+func (a *UserManager) SetupMessage(token string, message *api.Message) error {
+	user, err := a.userStorage.GetUserWithToken(token)
 	if err != nil {
 		return err
 	}
 
 	message.Meta = &api.Meta{
 		CreationTime: timestamppb.Now(),
-		Owner:        id,
-		Role:         role,
+		Owner:        user.ID,
+		Role:         user.Role,
 	}
 
 	return nil
 }
 
-func (a *Auther) match(base, check *api.Key) bool {
+func (a *UserManager) match(base, check *api.Key) bool {
 	if base.Type != "" && base.Type != check.Type {
 		return false
 	}
