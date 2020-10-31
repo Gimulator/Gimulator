@@ -8,8 +8,8 @@ import (
 	"runtime"
 
 	"github.com/Gimulator/Gimulator/api"
-	"github.com/Gimulator/Gimulator/auth"
 	"github.com/Gimulator/Gimulator/config"
+	"github.com/Gimulator/Gimulator/manager"
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/Gimulator/Gimulator/storage"
 	proto "github.com/Gimulator/protobuf/go/api"
@@ -68,14 +68,14 @@ func main() {
 	}
 
 	log.Info("starting to setup auther")
-	um, err := auth.NewUserManager(sqlite, sqlite)
+	manager, err := manager.NewManager(sqlite, sqlite)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup auther")
 		panic(err)
 	}
 
 	log.Info("starting to setup server")
-	server, err := api.NewServer(um, simulator)
+	server, err := api.NewServer(manager, simulator)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup server")
 		panic(err)
@@ -96,7 +96,10 @@ func main() {
 
 	log.Info("starting to serve")
 	s := grpc.NewServer()
-	proto.RegisterAPIServer(s, server)
+	proto.RegisterMessageAPIServer(s, server)
+	proto.RegisterOperatorAPIServer(s, server)
+	proto.RegisterDirectorAPIServer(s, server)
+	proto.RegisterActorAPIServer(s, server)
 	if err := s.Serve(listener); err != nil {
 		log.WithError(err).Fatal("could not serve")
 		panic(err)

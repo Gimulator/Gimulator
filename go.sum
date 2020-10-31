@@ -9,6 +9,14 @@ github.com/Gimulator/protobuf v0.0.0-20201022121144-1ac3e5df2cc1 h1:9kDcHkcChhyn
 github.com/Gimulator/protobuf v0.0.0-20201022121144-1ac3e5df2cc1/go.mod h1:231T4gp4qsZsGvyhG2AZtxMPCJqIQoflnQJXfuZ0Bq0=
 github.com/Gimulator/protobuf v0.0.0-20201023114157-9338d437ae6e h1:7RloDIwe3avikSWiRwNkNcSaLpt/edwvhzj9uWxzWHA=
 github.com/Gimulator/protobuf v0.0.0-20201023114157-9338d437ae6e/go.mod h1:231T4gp4qsZsGvyhG2AZtxMPCJqIQoflnQJXfuZ0Bq0=
+github.com/Gimulator/protobuf v0.0.0-20201031002756-24eda846f998 h1:jrXvwInOVXM1izo9kFFn3d+I9gObIoinBoH/KCdGRi0=
+github.com/Gimulator/protobuf v0.0.0-20201031002756-24eda846f998/go.mod h1:231T4gp4qsZsGvyhG2AZtxMPCJqIQoflnQJXfuZ0Bq0=
+github.com/Gimulator/protobuf v0.0.0-20201031020426-9a5b65cacb56 h1:h2s8NYJaQysQv4SDngYZy43F0Rd4pDzwZTwvuEq2Gto=
+github.com/Gimulator/protobuf v0.0.0-20201031020426-9a5b65cacb56/go.mod h1:231T4gp4qsZsGvyhG2AZtxMPCJqIQoflnQJXfuZ0Bq0=
+github.com/Gimulator/protobuf v0.0.0-20201031024550-ebf705725028 h1:3ajXoyHGvJFETPadb0epC3w1+FXNsbg+Nc01fEqN4D0=
+github.com/Gimulator/protobuf v0.0.0-20201031024550-ebf705725028/go.mod h1:231T4gp4qsZsGvyhG2AZtxMPCJqIQoflnQJXfuZ0Bq0=
+github.com/Gimulator/protobuf v0.0.0-20201031210546-1e4f72c6821e h1:y8MGoBtU4QdeOH1BysvQKQY3vQolhsXURTNwp5D9/Vc=
+github.com/Gimulator/protobuf v0.0.0-20201031210546-1e4f72c6821e/go.mod h1:231T4gp4qsZsGvyhG2AZtxMPCJqIQoflnQJXfuZ0Bq0=
 github.com/bradfitz/gomemcache v0.0.0-20170208213004-1952afaa557d/go.mod h1:PmM6Mmwb0LSuEubjR8N7PtNe1KxZLtOUHtbeikc5h60=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=

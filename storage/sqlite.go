@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/Gimulator/Gimulator/config"
-	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	_ "github.com/mattn/go-sqlite3"
@@ -70,7 +69,7 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	}
 
 	s.log.Info("starting to create role table")
-	if err := s.createRoleTable(); err != nil {
+	if err := s.createRuleTable(); err != nil {
 		s.log.WithError(err).Error("could not create role table")
 		return err
 	}
@@ -88,7 +87,7 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	}
 
 	s.log.Info("starting to fill role table")
-	if err := s.fillRoleTable(config); err != nil {
+	if err := s.fillRuleTable(config); err != nil {
 		s.log.WithError(err).Error("could not fill role table")
 		return err
 	}
@@ -99,12 +98,13 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 func (s *Sqlite) createUserTable() error {
 	query := `
 	CREATE TABLE user (
-		"id" TEXT,
-		"role" TEXT,
-		"token" TEXT,
-		"status" TEXT,
-		"readiness" BOOLEAN,
-		PRIMARY KEY (id, token)
+		"id" TEXT NOT NULL,
+		"token" TEXT NOT NULL UNIQUE,
+		"character" INTEGER NOT NULL,
+		"role" TEXT NOT NULL,
+		"status" INTEGER NOT NULL,
+		"readiness" BOOLEAN NOT NULL,
+		PRIMARY KEY (id)
 	);`
 
 	stmt, err := s.Prepare(query)
@@ -119,14 +119,15 @@ func (s *Sqlite) createUserTable() error {
 	return nil
 }
 
-func (s *Sqlite) createRoleTable() error {
+func (s *Sqlite) createRuleTable() error {
 	query := `
-	CREATE TABLE role (
+	CREATE TABLE rule (
+		"character" INTEGER NOT NULL,
 		"role" TEXT,
 		"type" TEXT,
 		"name" TEXT,
 		"namespace" TEXT,
-		"method" TEXT
+		"method" INTEGER NOT NULL
 	);`
 
 	stmt, err := s.Prepare(query)
@@ -144,13 +145,13 @@ func (s *Sqlite) createRoleTable() error {
 func (s *Sqlite) createMessageTable() error {
 	query := `
 	CREATE TABLE message (
-		"type" TEXT,
-		"name" TEXT,
-		"namespace" TEXT,
-		"content" TEXT,
-		"owner" TEXT,
-		"creationtimeseconds" INTEGER,
-		"creationtimenanos" INTEGER,
+		"type" TEXT NOT NULL,
+		"name" TEXT NOT NULL,
+		"namespace" TEXT NOT NULL,
+		"content" TEXT NOT NULL,
+		"owner" TEXT NOT NULL,
+		"creationtimeseconds" INTEGER NOT NULL,
+		"creationtimenanos" INTEGER NOT NULL,
 		PRIMARY KEY (type, name, namespace)
 	);`
 
@@ -168,14 +169,14 @@ func (s *Sqlite) createMessageTable() error {
 
 func (s *Sqlite) fillUserTable(config *config.Config) error {
 	for _, cred := range config.Credentials {
-		query := `INSERT INTO user VALUES (?, ?, ?, ?, ?)`
+		query := `INSERT INTO user VALUES (?, ?, ?, ?, ?, ?)`
 
 		stmt, err := s.Prepare(query)
 		if err != nil {
 			return err
 		}
 
-		if _, err = stmt.Exec(cred.ID, cred.Role, cred.Token, types.StatusUnknown, false); err != nil {
+		if _, err = stmt.Exec(cred.ID, cred.Token, cred.Character, cred.Role, api.Status_unknown, false); err != nil {
 			return err
 		}
 	}
@@ -183,33 +184,79 @@ func (s *Sqlite) fillUserTable(config *config.Config) error {
 	return nil
 }
 
-func (s *Sqlite) fillRoleTable(config *config.Config) error {
-	for _, rule := range config.Roles.Director {
+func (s *Sqlite) fillRuleTable(config *config.Config) error {
+	for _, rule := range config.Character.Director {
 		for _, method := range rule.Methods {
-			insertSQL := `INSERT INTO role VALUES (?, ?, ?, ?, ?)`
+			insertSQL := `INSERT INTO rule VALUES (?, ?, ?, ?, ?, ?)`
 
 			stmt, err := s.Prepare(insertSQL)
 			if err != nil {
 				return err
 			}
 
-			if _, err = stmt.Exec(types.DirectorRole, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
-				return err
+			if rule.Key == nil {
+				if _, err = stmt.Exec(api.Character_director, nil, nil, nil, nil, method); err != nil {
+					return err
+				}
+			} else {
+				if _, err = stmt.Exec(api.Character_director, nil, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
-	for role, rules := range config.Roles.Actors {
+	for _, rule := range config.Character.Operator {
+		for _, method := range rule.Methods {
+			insertSQL := `INSERT INTO rule VALUES (?, ?, ?, ?, ?, ?)`
+
+			stmt, err := s.Prepare(insertSQL)
+			if err != nil {
+				return err
+			}
+			if rule.Key == nil {
+				if _, err = stmt.Exec(api.Character_operator, nil, nil, nil, nil, method); err != nil {
+					return err
+				}
+			} else {
+				if _, err = stmt.Exec(api.Character_operator, nil, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	for _, rule := range config.Character.Master {
+		for _, method := range rule.Methods {
+			insertSQL := `INSERT INTO rule VALUES (?, ?, ?, ?, ?, ?)`
+
+			stmt, err := s.Prepare(insertSQL)
+			if err != nil {
+				return err
+			}
+			if rule.Key == nil {
+				if _, err = stmt.Exec(api.Character_master, nil, nil, nil, nil, method); err != nil {
+					return err
+				}
+			} else {
+				if _, err = stmt.Exec(api.Character_master, nil, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	for role, rules := range config.Character.Actors {
 		for _, rule := range rules {
 			for _, method := range rule.Methods {
-				insertSQL := `INSERT INTO role VALUES (?, ?, ?, ?, ?)`
+				insertSQL := `INSERT INTO rule VALUES (?, ?, ?, ?, ?, ?)`
 
 				stmt, err := s.Prepare(insertSQL)
 				if err != nil {
 					return err
 				}
 
-				if _, err = stmt.Exec(role, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
+				if _, err = stmt.Exec(api.Character_actor, role, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
 					return err
 				}
 			}
@@ -342,9 +389,9 @@ func (s *Sqlite) delete(key *api.Key) error {
 }
 
 func (s *Sqlite) deleteAll(key *api.Key) error {
-	deleteStatement := `DELETE FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
+	query := `DELETE FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
 
-	stmt, err := s.Prepare(deleteStatement)
+	stmt, err := s.Prepare(query)
 	if err != nil {
 		return status.Errorf(codes.Internal, "could not prepare statement for database: %v", err)
 	}
@@ -362,15 +409,19 @@ func (s *Sqlite) deleteAll(key *api.Key) error {
 ///////////////////////////// UserStorage ///
 /////////////////////////////////////////////
 
-func (s *Sqlite) GetUserWithToken(token string) (*User, error) {
+func (s *Sqlite) GetUserWithToken(token string) (*api.User, error) {
 	return s.getUserWithToken(token)
 }
 
-func (s *Sqlite) GetUserWithID(id string) (*User, error) {
+func (s *Sqlite) GetUserWithID(id string) (*api.User, error) {
 	return s.getUserWithID(id)
 }
 
-func (s *Sqlite) UpdateUserStatus(id string, status types.Status) error {
+func (s *Sqlite) GetUsers(character *api.Character, role *string, st *api.Status, readiness *bool) ([]*api.User, error) {
+	return s.getUsers(character, role, st, readiness)
+}
+
+func (s *Sqlite) UpdateUserStatus(id string, status api.Status) error {
 	return s.updateUserStatus(id, status)
 }
 
@@ -378,22 +429,22 @@ func (s *Sqlite) UpdateUserReadiness(id string, isReady bool) error {
 	return s.updateUserReadiness(id, isReady)
 }
 
-func (s *Sqlite) getUserWithToken(token string) (*User, error) {
-	selectStatement := `SELECT * FROM user WHERE token = ?`
+func (s *Sqlite) getUserWithToken(token string) (*api.User, error) {
+	query := `SELECT * FROM user WHERE token = ?`
 
-	rows, err := s.Query(selectStatement, token)
+	rows, err := s.Query(query, token)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
 	}
 	defer rows.Close()
 
-	user := &User{}
+	user := &api.User{}
 	flag := false
 
 	for rows.Next() {
 		flag = true
 
-		err = rows.Scan(user.ID, user.Role, user.Token, user.Status, user.Readiness)
+		err = rows.Scan(&user.Id, &user.Token, &user.Character, &user.Role, &user.Status, &user.Readiness)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
 		}
@@ -406,22 +457,22 @@ func (s *Sqlite) getUserWithToken(token string) (*User, error) {
 	return user, nil
 }
 
-func (s *Sqlite) getUserWithID(id string) (*User, error) {
-	selectStatement := `SELECT * FROM user WHERE id = ?`
+func (s *Sqlite) getUserWithID(id string) (*api.User, error) {
+	query := `SELECT * FROM user WHERE id = ?`
 
-	rows, err := s.Query(selectStatement, id)
+	rows, err := s.Query(query, id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
 	}
 	defer rows.Close()
 
-	user := &User{}
+	user := &api.User{}
 	flag := false
 
 	for rows.Next() {
 		flag = true
 
-		err = rows.Scan(user.ID, user.Role, user.Token, user.Status, user.Readiness)
+		err = rows.Scan(&user.Id, &user.Token, &user.Character, &user.Role, &user.Status, &user.Readiness)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
 		}
@@ -434,7 +485,30 @@ func (s *Sqlite) getUserWithID(id string) (*User, error) {
 	return user, nil
 }
 
-func (s *Sqlite) updateUserStatus(id string, st types.Status) error {
+func (s *Sqlite) getUsers(character *api.Character, role *string, st *api.Status, readiness *bool) ([]*api.User, error) {
+	stmt := `SELECT * FROM user WHERE character LIKE ? AND role LIKE ? AND status LIKE ? AND readiness LIKE ?`
+
+	rows, err := s.Query(stmt, character)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
+	}
+	defer rows.Close()
+
+	users := make([]*api.User, 0)
+	userR := &api.User{}
+
+	for rows.Next() {
+		err = rows.Scan(&userR.Id, &userR.Token, &userR.Character, &userR.Role, &userR.Status, &userR.Readiness)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
+		}
+		users = append(users, userR)
+	}
+
+	return users, nil
+}
+
+func (s *Sqlite) updateUserStatus(id string, st api.Status) error {
 	query := `UPDATE user SET status = ? WHERE id = ?`
 
 	stmt, err := s.Prepare(query)
@@ -465,17 +539,17 @@ func (s *Sqlite) updateUserReadiness(id string, isReady bool) error {
 }
 
 /////////////////////////////////////////////
-///////////////////////////// RoleStorage ///
+///////////////////////////// RuleStorage ///
 /////////////////////////////////////////////
 
-func (s *Sqlite) GetRules(role string, method types.Method) ([]*api.Key, error) {
-	return s.getRules(role, method)
+func (s *Sqlite) GetRules(character api.Character, role string, method api.Method) ([]*api.Key, error) {
+	return s.getRules(character, role, method)
 }
 
-func (s *Sqlite) getRules(role string, method types.Method) ([]*api.Key, error) {
-	selectStatement := `SELECT type, name, namespace FROM role WHERE role = ? AND method = ?`
+func (s *Sqlite) getRules(character api.Character, role string, method api.Method) ([]*api.Key, error) {
+	selectStatement := `SELECT type, name, namespace FROM role WHERE character = ? AND role = ? AND method = ?`
 
-	rows, err := s.Query(selectStatement, role, method)
+	rows, err := s.Query(selectStatement, character, role, method)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
 	}

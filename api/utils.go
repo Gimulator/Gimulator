@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,10 +9,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/gddo/httputil/header"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -61,23 +62,23 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) str
 	return ""
 }
 
-func validateKey(key *api.Key, method types.Method) error {
+func validateKey(key *api.Key, method api.Method) error {
 	if key == nil {
 		return status.Errorf(codes.InvalidArgument, "the key cannot be nil/null")
 	}
 
 	switch method {
-	case types.GetMethod:
+	case api.Method_Get:
 		return validateGetKey(key)
-	case types.GetAllMethod:
+	case api.Method_GetAll:
 		return validateGetAllKey(key)
-	case types.PutMethod:
+	case api.Method_Put:
 		return validatePutKey(key)
-	case types.DeleteMethod:
+	case api.Method_Delete:
 		return validateDeleteKey(key)
-	case types.DeleteAllMethod:
+	case api.Method_DeleteAll:
 		return validateDeleteAllKey(key)
-	case types.WatchMethod:
+	case api.Method_Watch:
 		return validateWatchKey(key)
 	default:
 		//TODO
@@ -134,4 +135,18 @@ func validateDeleteAllKey(key *api.Key) error {
 
 func validateWatchKey(key *api.Key) error {
 	return nil
+}
+
+func extractTokenFromContext(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", status.Errorf(codes.InvalidArgument, "could not extract metadata from incoming context")
+	}
+
+	tokens := md.Get("token")
+	if len(tokens) != 1 {
+		return "", status.Errorf(codes.InvalidArgument, "could not extract token from metadata of incoming context")
+	}
+
+	return tokens[0], nil
 }

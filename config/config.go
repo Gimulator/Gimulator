@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 	"gopkg.in/yaml.v2"
 )
@@ -16,28 +15,31 @@ var (
 )
 
 type Rule struct {
-	Key     api.Key        `yaml:"key"`
-	Methods []types.Method `yaml:"methods"`
+	Key     *api.Key     `yaml:"key"`
+	Methods []api.Method `yaml:"methods"`
 }
 
-type Roles struct {
+type Character struct {
 	Director []Rule            `yaml:"director"`
 	Actors   map[string][]Rule `yaml:"actors"`
+	Master   []Rule            `yaml:"master,omitempty"`
+	Operator []Rule            `yaml:"operator,omitempty"`
 }
 
 type Credential struct {
-	Token string `yaml:"token"`
-	ID    string `yaml:"id"`
-	Role  string `yaml:"role"`
+	ID        string        `yaml:"id"`
+	Token     string        `yaml:"token"`
+	Character api.Character `yaml:"character"`
+	Role      string        `yaml:"role"`
 }
 
 type Config struct {
-	Roles       Roles
+	Character   Character
 	Credentials []Credential
 }
 
 func NewConfig(dir string) (*Config, error) {
-	roles, err := newRoles(dir)
+	character, err := newCharacter(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -48,12 +50,12 @@ func NewConfig(dir string) (*Config, error) {
 	}
 
 	return &Config{
-		Roles:       roles,
+		Character:   character,
 		Credentials: creds,
 	}, nil
 }
 
-func newRoles(dir string) (Roles, error) {
+func newCharacter(dir string) (Character, error) {
 	if dir == "" {
 		dir = gimulatorConfigDir
 	}
@@ -61,15 +63,43 @@ func newRoles(dir string) (Roles, error) {
 
 	file, err := os.Open(path)
 	if err != nil {
-		return Roles{}, err
+		return Character{}, err
 	}
 
-	roles := Roles{}
-	if err := yaml.NewDecoder(file).Decode(&roles); err != nil {
-		return Roles{}, err
+	character := Character{}
+	if err := yaml.NewDecoder(file).Decode(&character); err != nil {
+		return Character{}, err
 	}
 
-	return roles, nil
+	character.Director = append(character.Director, Rule{
+		Key: nil,
+		Methods: []api.Method{
+			api.Method_GetActorWithID,
+			api.Method_GetActorsWithRole,
+			api.Method_GetAllActors,
+			api.Method_PutResult,
+		},
+	})
+
+	character.Operator = append(character.Operator, Rule{
+		Key: nil,
+		Methods: []api.Method{
+			api.Method_SetUserStatusUnknown,
+			api.Method_SetUserStatusRunning,
+			api.Method_SetUserStatusFailed,
+		},
+	})
+
+	for i := range character.Actors {
+		character.Actors[i] = append(character.Actors[i], Rule{
+			Key: nil,
+			Methods: []api.Method{
+				api.Method_ImReady,
+			}
+		})
+	}
+
+	return character, nil
 }
 
 func newCredentials(dir string) ([]Credential, error) {

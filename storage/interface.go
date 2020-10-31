@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"github.com/Gimulator/Gimulator/types"
 	"github.com/Gimulator/protobuf/go/api"
 )
 
@@ -14,19 +13,13 @@ type MessageStorage interface {
 }
 
 type UserStorage interface {
-	GetUserWithToken(string) (*User, error)
-	GetUserWithID(string) (*User, error)
-	UpdateUserStatus(string, types.Status) error
+	GetUserWithToken(string) (*api.User, error)
+	GetUserWithID(string) (*api.User, error)
+	GetUsers(api.Character) ([]*api.User, error)
+	UpdateUserStatus(string, api.Status) error
+	UpdateUserReadiness(string, bool) error
 }
 
 type RoleStorage interface {
-	GetRules(string, types.Method) ([]*api.Key, error)
-}
-
-type User struct {
-	ID        string
-	Token     string
-	Role      string
-	Readiness bool
-	Status    types.Status
+	GetRules(api.Character, string, api.Method) ([]*api.Key, error)
 }
