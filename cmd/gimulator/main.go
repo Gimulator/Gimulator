@@ -10,12 +10,12 @@ import (
 	"github.com/Gimulator/Gimulator/api"
 	"github.com/Gimulator/Gimulator/config"
 	"github.com/Gimulator/Gimulator/manager"
+	"github.com/Gimulator/Gimulator/mq"
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/Gimulator/Gimulator/storage"
 	proto "github.com/Gimulator/protobuf/go/api"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	//_ "github.com/mattn/go-sqlite3"
 )
 
 func sort(str []string) {
@@ -74,8 +74,23 @@ func main() {
 		panic(err)
 	}
 
+	log.Info("starting to setup RabbitMQ")
+	rabbitURL := os.Getenv("GIMULATOR_RABBIT_URL")
+	if rabbitURL == "" {
+		panic("set th 'GIMULATOR_RABBIT_URL' environment variable for sending result to RabbitMQ")
+	}
+	rabbitQueue := os.Getenv("GIMULATOR_RABBIT_QUEUE")
+	if rabbitQueue == "" {
+		panic("set th 'GIMULATOR_RABBIT_QUEUE' environment variable for sending result to RabbitMQ")
+	}
+
+	rabbit, err := mq.NewRabbit(rabbitURL, rabbitQueue)
+	if err != nil {
+		panic(err)
+	}
+
 	log.Info("starting to setup server")
-	server, err := api.NewServer(manager, simulator)
+	server, err := api.NewServer(manager, simulator, rabbit)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup server")
 		panic(err)
@@ -99,7 +114,7 @@ func main() {
 	proto.RegisterMessageAPIServer(s, server)
 	proto.RegisterOperatorAPIServer(s, server)
 	proto.RegisterDirectorAPIServer(s, server)
-	proto.RegisterActorAPIServer(s, server)
+	proto.RegisterUserAPIServer(s, server)
 	if err := s.Serve(listener); err != nil {
 		log.WithError(err).Fatal("could not serve")
 		panic(err)

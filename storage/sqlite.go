@@ -1,23 +1,26 @@
 package storage
 
 import (
-	"database/sql"
+	"errors"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/Gimulator/Gimulator/config"
 	"github.com/Gimulator/protobuf/go/api"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var memoryPath string = ":memory:"
 
 type Sqlite struct {
-	*sql.DB
+	*gorm.DB
 	log *logrus.Entry
 }
 
@@ -55,28 +58,16 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	}
 
 	s.log.Info("starting to open sqlite db")
-	db, err := sql.Open("sqlite3", path)
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
 	if err != nil {
 		s.log.WithError(err).Error("could not open sqlite db")
 		return err
 	}
 	s.DB = db
 
-	s.log.Info("starting to create credential table")
-	if err := s.createUserTable(); err != nil {
-		s.log.WithError(err).Error("could not create credential table")
-		return err
-	}
-
-	s.log.Info("starting to create role table")
-	if err := s.createRuleTable(); err != nil {
-		s.log.WithError(err).Error("could not create role table")
-		return err
-	}
-
-	s.log.Info("starting to create message table")
-	if err := s.createMessageTable(); err != nil {
-		s.log.WithError(err).Error("could not create message table")
+	s.log.Info("starting to create tables")
+	if err := s.AutoMigrate(&User{}, &Rule{}, &Message{}); err != nil {
+		s.log.WithError(err).Error("could not create tables")
 		return err
 	}
 
@@ -95,88 +86,16 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	return nil
 }
 
-func (s *Sqlite) createUserTable() error {
-	query := `
-	CREATE TABLE user (
-		"id" TEXT NOT NULL,
-		"token" TEXT NOT NULL UNIQUE,
-		"character" INTEGER NOT NULL,
-		"role" TEXT NOT NULL,
-		"status" INTEGER NOT NULL,
-		"readiness" BOOLEAN NOT NULL,
-		PRIMARY KEY (id)
-	);`
-
-	stmt, err := s.Prepare(query)
-	if err != nil {
-		return err
-	}
-
-	if _, err = stmt.Exec(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *Sqlite) createRuleTable() error {
-	query := `
-	CREATE TABLE rule (
-		"character" INTEGER NOT NULL,
-		"role" TEXT,
-		"type" TEXT,
-		"name" TEXT,
-		"namespace" TEXT,
-		"method" INTEGER NOT NULL
-	);`
-
-	stmt, err := s.Prepare(query)
-	if err != nil {
-		return err
-	}
-
-	if _, err = stmt.Exec(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *Sqlite) createMessageTable() error {
-	query := `
-	CREATE TABLE message (
-		"type" TEXT NOT NULL,
-		"name" TEXT NOT NULL,
-		"namespace" TEXT NOT NULL,
-		"content" TEXT NOT NULL,
-		"owner" TEXT NOT NULL,
-		"creationtimeseconds" INTEGER NOT NULL,
-		"creationtimenanos" INTEGER NOT NULL,
-		PRIMARY KEY (type, name, namespace)
-	);`
-
-	stmt, err := s.Prepare(query)
-	if err != nil {
-		return err
-	}
-
-	if _, err = stmt.Exec(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *Sqlite) fillUserTable(config *config.Config) error {
 	for _, cred := range config.Credentials {
-		query := `INSERT INTO user VALUES (?, ?, ?, ?, ?, ?)`
-
-		stmt, err := s.Prepare(query)
-		if err != nil {
-			return err
-		}
-
-		if _, err = stmt.Exec(cred.ID, cred.Token, cred.Character, cred.Role, api.Status_unknown, false); err != nil {
+		if err := s.insertUser(&User{
+			Name:      cred.Name,
+			Token:     cred.Token,
+			Character: cred.Character,
+			Role:      cred.Role,
+			Readiness: false,
+			Status:    api.Status_unknown,
+		}); err != nil {
 			return err
 		}
 	}
@@ -187,61 +106,45 @@ func (s *Sqlite) fillUserTable(config *config.Config) error {
 func (s *Sqlite) fillRuleTable(config *config.Config) error {
 	for _, rule := range config.Character.Director {
 		for _, method := range rule.Methods {
-			insertSQL := `INSERT INTO rule VALUES (?, ?, ?, ?, ?, ?)`
-
-			stmt, err := s.Prepare(insertSQL)
-			if err != nil {
+			if err := s.insertRule(&Rule{
+				Method:    method,
+				Type:      rule.Key.Type,
+				Name:      rule.Key.Name,
+				Namespace: rule.Key.Namespace,
+				Role:      "",
+				Character: api.Character_director,
+			}); err != nil {
 				return err
-			}
-
-			if rule.Key == nil {
-				if _, err = stmt.Exec(api.Character_director, nil, nil, nil, nil, method); err != nil {
-					return err
-				}
-			} else {
-				if _, err = stmt.Exec(api.Character_director, nil, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
-					return err
-				}
 			}
 		}
 	}
 
 	for _, rule := range config.Character.Operator {
 		for _, method := range rule.Methods {
-			insertSQL := `INSERT INTO rule VALUES (?, ?, ?, ?, ?, ?)`
-
-			stmt, err := s.Prepare(insertSQL)
-			if err != nil {
+			if err := s.insertRule(&Rule{
+				Method:    method,
+				Type:      rule.Key.Type,
+				Name:      rule.Key.Name,
+				Namespace: rule.Key.Namespace,
+				Role:      "",
+				Character: api.Character_operator,
+			}); err != nil {
 				return err
-			}
-			if rule.Key == nil {
-				if _, err = stmt.Exec(api.Character_operator, nil, nil, nil, nil, method); err != nil {
-					return err
-				}
-			} else {
-				if _, err = stmt.Exec(api.Character_operator, nil, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
-					return err
-				}
 			}
 		}
 	}
 
 	for _, rule := range config.Character.Master {
 		for _, method := range rule.Methods {
-			insertSQL := `INSERT INTO rule VALUES (?, ?, ?, ?, ?, ?)`
-
-			stmt, err := s.Prepare(insertSQL)
-			if err != nil {
+			if err := s.insertRule(&Rule{
+				Method:    method,
+				Type:      rule.Key.Type,
+				Name:      rule.Key.Name,
+				Namespace: rule.Key.Namespace,
+				Role:      "",
+				Character: api.Character_master,
+			}); err != nil {
 				return err
-			}
-			if rule.Key == nil {
-				if _, err = stmt.Exec(api.Character_master, nil, nil, nil, nil, method); err != nil {
-					return err
-				}
-			} else {
-				if _, err = stmt.Exec(api.Character_master, nil, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
-					return err
-				}
 			}
 		}
 	}
@@ -249,14 +152,14 @@ func (s *Sqlite) fillRuleTable(config *config.Config) error {
 	for role, rules := range config.Character.Actors {
 		for _, rule := range rules {
 			for _, method := range rule.Methods {
-				insertSQL := `INSERT INTO rule VALUES (?, ?, ?, ?, ?, ?)`
-
-				stmt, err := s.Prepare(insertSQL)
-				if err != nil {
-					return err
-				}
-
-				if _, err = stmt.Exec(api.Character_actor, role, rule.Key.Type, rule.Key.Name, rule.Key.Namespace, method); err != nil {
+				if err := s.insertRule(&Rule{
+					Method:    method,
+					Type:      rule.Key.Type,
+					Name:      rule.Key.Name,
+					Namespace: rule.Key.Namespace,
+					Role:      role,
+					Character: api.Character_actor,
+				}); err != nil {
 					return err
 				}
 			}
@@ -271,331 +174,350 @@ func (s *Sqlite) fillRuleTable(config *config.Config) error {
 /////////////////////////////////////////////
 
 func (s *Sqlite) Put(message *api.Message) error {
-	return s.put(message)
-}
-
-func (s *Sqlite) Get(key *api.Key) (*api.Message, error) {
-	return s.get(key)
-}
-
-func (s *Sqlite) GetAll(key *api.Key) ([]*api.Message, error) {
-	return s.getAll(key)
-}
-
-func (s *Sqlite) Delete(key *api.Key) error {
-	return s.delete(key)
-}
-
-func (s *Sqlite) DeleteAll(key *api.Key) error {
-	return s.deleteAll(key)
-}
-
-func (s *Sqlite) put(message *api.Message) error {
-	query := `INSERT OR REPLACE INTO message VALUES (?, ?, ?, ?, ?, ?, ?)`
-
-	stmt, err := s.Prepare(query)
-	if err != nil {
-		return status.Errorf(codes.Internal, "could not prepare statement for database: %v", err)
+	// **Attention**: I suppose the owner of message was validated before calling this fucntion,
+	// the reason is performance.
+	mes := &Message{
+		Type:      message.Key.Type,
+		Name:      message.Key.Name,
+		Namespace: message.Key.Namespace,
+		UserName:  message.Meta.Owner.Name,
+		Content:   message.Content,
 	}
 
-	seconds := message.Meta.CreationTime.Seconds
-	nanos := message.Meta.CreationTime.Nanos
-
-	_, err = stmt.Exec(message.Key.Type, message.Key.Name, message.Key.Namespace, message.Content, message.Meta.Owner, seconds, nanos)
-	if err != nil {
-		return status.Errorf(codes.Internal, "could not execute statement on database: %v", err)
+	if err := s.insertOrUpdateMessage(mes); err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("could not put message=%v: %v", message, err.Error()))
 	}
-
 	return nil
 }
 
-func (s *Sqlite) get(key *api.Key) (*api.Message, error) {
-	query := `SELECT * FROM message WHERE type = ? AND name = ? AND namespace = ?`
-
-	rows, err := s.Query(query, key.Type, key.Name, key.Namespace)
+func (s *Sqlite) Get(key *api.Key) (*api.Message, error) {
+	messages, err := s.selectMessage(key.Type, key.Name, key.Namespace)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
-	}
-	defer rows.Close()
-
-	flag := false
-	var seconds, nanos int
-	messageR := api.Message{
-		Content: "",
-		Key:     &api.Key{},
-		Meta:    &api.Meta{},
+		return nil, status.Error(codes.Internal, fmt.Sprintf("could not get message with key=%v: %v", key, err.Error()))
 	}
 
-	for rows.Next() {
-		flag = true
-		if err := rows.Scan(&messageR.Key.Type, &messageR.Key.Name, &messageR.Key.Namespace, &messageR.Content, &messageR.Meta.Owner, &seconds, &nanos); err != nil {
-			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
-		}
-		messageR.Meta.CreationTime = s.marshalTimestamp(seconds, nanos)
+	if len(messages) < 1 {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("could not find any message with key=%v: %v", key, err.Error()))
 	}
 
-	if !flag {
-		return nil, status.Errorf(codes.NotFound, "message with key=%v does not exist", key)
-	}
-
-	return &messageR, nil
+	return s.sqliteToAPIMessage(messages[0]), nil
 }
 
-func (s *Sqlite) getAll(key *api.Key) ([]*api.Message, error) {
-	query := `SELECT * FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
-
-	t, n, ns := s.makeKey(key)
-
-	rows, err := s.Query(query, t, n, ns)
+func (s *Sqlite) GetAll(key *api.Key) ([]*api.Message, error) {
+	messages, err := s.selectMessage(key.Type, key.Name, key.Namespace)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("could not get all messages with key=%v: %v", key, err.Error()))
 	}
-	defer rows.Close()
 
-	var messages []*api.Message
-	for rows.Next() {
-		messageR := api.Message{
-			Content: "",
-			Key:     &api.Key{},
-			Meta:    &api.Meta{},
-		}
-		var seconds, nanos int
+	res := make([]*api.Message, 0)
+	for _, mes := range messages {
+		res = append(res, s.sqliteToAPIMessage(mes))
+	}
+	return res, nil
+}
 
-		err = rows.Scan(&messageR.Key.Type, &messageR.Key.Name, &messageR.Key.Namespace, &messageR.Content, &messageR.Meta.Owner, &seconds, &nanos)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
-		}
+func (s *Sqlite) Delete(key *api.Key) error {
+	if err := s.deleteMessage(key.Type, key.Name, key.Namespace); err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("could not delete message with key=%v: %v", key, err.Error()))
+	}
+	return nil
+}
 
-		messageR.Meta.CreationTime = s.marshalTimestamp(seconds, nanos)
-		messages = append(messages, &messageR)
+func (s *Sqlite) DeleteAll(key *api.Key) error {
+	if err := s.deleteMessage(key.Type, key.Name, key.Namespace); err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("could not delete all messages with key=%v: %v", key, err.Error()))
+	}
+	return nil
+}
+
+func (s *Sqlite) insertOrUpdateMessage(message *Message) error {
+	if err := s.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "name"}, {Name: "namespace"}, {Name: "type"},
+		},
+		DoUpdates: clause.AssignmentColumns([]string{"user_name", "content"}),
+	}).Create(message).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Sqlite) selectMessage(typ, name, namespace string) ([]*Message, error) {
+	messages := []*Message{}
+
+	db := s.DB
+	if typ != "" {
+		db = db.Where("type = ?", typ)
+	}
+	if name != "" {
+		db = db.Where("name = ?", name)
+	}
+	if namespace != "" {
+		db = db.Where("namespace = ?", namespace)
+	}
+
+	if err := db.Preload("User").Find(&messages).Error; err != nil {
+		return nil, err
 	}
 
 	return messages, nil
 }
 
-func (s *Sqlite) delete(key *api.Key) error {
-	query := `DELETE FROM message WHERE type = ? AND name = ? AND namespace = ? `
+func (s *Sqlite) deleteMessage(typ, name, namespace string) error {
+	db := s.DB
 
-	stmt, err := s.Prepare(query)
-	if err != nil {
-		return status.Errorf(codes.Internal, "could not prepare statement for database: %v", err)
+	if typ != "" {
+		db = db.Where("type = ?", typ)
+	}
+	if name != "" {
+		db = db.Where("name = ?", name)
+	}
+	if namespace != "" {
+		db = db.Where("namespace = ?", namespace)
 	}
 
-	if _, err = stmt.Exec(key.Type, key.Name, key.Namespace); err != nil {
-		return status.Errorf(codes.Internal, "could not execute statement on database: %v", err)
+	return db.Delete(&Message{}).Error
+}
+
+///////////////////////////////////////////////
+/////////////////////////////// UserStorage ///
+///////////////////////////////////////////////
+
+func (s *Sqlite) GetUserWithName(n string) (*api.User, error) {
+	user, err := s.selectUserWithName(n)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("could not found any user with name=%v", n))
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("could not found any user with name=%v: %v", n, err.Error()))
+	}
+	return s.sqliteToAPIUser(user), nil
+}
+
+func (s *Sqlite) GetUserWithToken(t string) (*api.User, error) {
+	user, err := s.selectUserWithToken(t)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("could not find any user with token=%v", t))
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("could not find any user with token=%v: %v", t, err.Error()))
+	}
+	return s.sqliteToAPIUser(user), nil
+}
+
+func (s *Sqlite) GetUsers(n *string, t *string, c *api.Character, r *string, rd *bool, st *api.Status) ([]*api.User, error) {
+	res := make([]*api.User, 0)
+
+	users, err := s.selectUsers(n, t, c, r, rd, st)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("could not find any user with token=%v: %v", t, err.Error()))
+	}
+
+	for _, u := range users {
+		res = append(res, s.sqliteToAPIUser(u))
+	}
+
+	return res, nil
+}
+
+func (s *Sqlite) UpdateUserReadiness(name string, readiness bool) error {
+	if err := s.updateUser(name, &readiness, nil); err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("could not update readiness of user with name=%v: %v", name, err.Error()))
+	}
+	return nil
+}
+
+func (s *Sqlite) UpdateUserStatus(name string, st api.Status) error {
+	if err := s.updateUser(name, nil, &st); err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("could not update status of user with name=%v: %v", name, err.Error()))
+	}
+	return nil
+}
+
+func (s *Sqlite) selectUserWithName(n string) (*User, error) {
+	user := &User{}
+	if err := s.Where("name = ?", n).First(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (s *Sqlite) selectUserWithToken(t string) (*User, error) {
+	user := &User{}
+	if err := s.Where("token = ?", t).First(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (s *Sqlite) insertUser(user *User) error {
+	if err := s.Create(user).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Sqlite) updateUser(name string, r *bool, st *api.Status) error {
+	db := s.Model(&User{}).Where("name = ?", name)
+	updates := make(map[string]interface{})
+
+	if r != nil {
+		updates["readiness"] = r
+	}
+	if st != nil {
+		updates["status"] = st
+	}
+
+	if err := db.Updates(updates).Error; err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (s *Sqlite) deleteAll(key *api.Key) error {
-	query := `DELETE FROM message WHERE type LIKE ? AND name LIKE ? AND namespace LIKE ?`
+func (s *Sqlite) selectUsers(n *string, t *string, c *api.Character, r *string, rd *bool, st *api.Status) ([]*User, error) {
+	users := []*User{}
 
-	stmt, err := s.Prepare(query)
-	if err != nil {
-		return status.Errorf(codes.Internal, "could not prepare statement for database: %v", err)
+	db := s.DB
+	if n != nil {
+		db = db.Where("name = ?", n)
+	}
+	if t != nil {
+		db = db.Where("token = ?", t)
+	}
+	if c != nil {
+		db = db.Where("character = ?", c)
+	}
+	if r != nil {
+		db = db.Where("role = ?", r)
+	}
+	if rd != nil {
+		db = db.Where("readiness = ?", rd)
+	}
+	if st != nil {
+		db = db.Where("status = ?", st)
 	}
 
-	t, n, ns := s.makeKey(key)
-
-	if _, err = stmt.Exec(t, n, ns); err != nil {
-		return status.Errorf(codes.Internal, "could not execute statement on database: %v", err)
-	}
-
-	return nil
-}
-
-/////////////////////////////////////////////
-///////////////////////////// UserStorage ///
-/////////////////////////////////////////////
-
-func (s *Sqlite) GetUserWithToken(token string) (*api.User, error) {
-	return s.getUserWithToken(token)
-}
-
-func (s *Sqlite) GetUserWithID(id string) (*api.User, error) {
-	return s.getUserWithID(id)
-}
-
-func (s *Sqlite) GetUsers(character *api.Character, role *string, st *api.Status, readiness *bool) ([]*api.User, error) {
-	return s.getUsers(character, role, st, readiness)
-}
-
-func (s *Sqlite) UpdateUserStatus(id string, status api.Status) error {
-	return s.updateUserStatus(id, status)
-}
-
-func (s *Sqlite) UpdateUserReadiness(id string, isReady bool) error {
-	return s.updateUserReadiness(id, isReady)
-}
-
-func (s *Sqlite) getUserWithToken(token string) (*api.User, error) {
-	query := `SELECT * FROM user WHERE token = ?`
-
-	rows, err := s.Query(query, token)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
-	}
-	defer rows.Close()
-
-	user := &api.User{}
-	flag := false
-
-	for rows.Next() {
-		flag = true
-
-		err = rows.Scan(&user.Id, &user.Token, &user.Character, &user.Role, &user.Status, &user.Readiness)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
-		}
-	}
-
-	if !flag {
-		return nil, status.Errorf(codes.NotFound, "")
-	}
-
-	return user, nil
-}
-
-func (s *Sqlite) getUserWithID(id string) (*api.User, error) {
-	query := `SELECT * FROM user WHERE id = ?`
-
-	rows, err := s.Query(query, id)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
-	}
-	defer rows.Close()
-
-	user := &api.User{}
-	flag := false
-
-	for rows.Next() {
-		flag = true
-
-		err = rows.Scan(&user.Id, &user.Token, &user.Character, &user.Role, &user.Status, &user.Readiness)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
-		}
-	}
-
-	if !flag {
-		return nil, status.Errorf(codes.NotFound, "")
-	}
-
-	return user, nil
-}
-
-func (s *Sqlite) getUsers(character *api.Character, role *string, st *api.Status, readiness *bool) ([]*api.User, error) {
-	stmt := `SELECT * FROM user WHERE character LIKE ? AND role LIKE ? AND status LIKE ? AND readiness LIKE ?`
-
-	rows, err := s.Query(stmt, character)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
-	}
-	defer rows.Close()
-
-	users := make([]*api.User, 0)
-	userR := &api.User{}
-
-	for rows.Next() {
-		err = rows.Scan(&userR.Id, &userR.Token, &userR.Character, &userR.Role, &userR.Status, &userR.Readiness)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
-		}
-		users = append(users, userR)
+	if err := db.Find(&users).Error; err != nil {
+		return nil, err
 	}
 
 	return users, nil
 }
 
-func (s *Sqlite) updateUserStatus(id string, st api.Status) error {
-	query := `UPDATE user SET status = ? WHERE id = ?`
-
-	stmt, err := s.Prepare(query)
-	if err != nil {
-		return status.Errorf(codes.Internal, "could not prepare statement for database: %v", err)
-	}
-
-	if _, err = stmt.Exec(st, id); err != nil {
-		return status.Errorf(codes.Internal, "could not execute statement on database: %v", err)
-	}
-
-	return nil
-}
-
-func (s *Sqlite) updateUserReadiness(id string, isReady bool) error {
-	query := `UPDATE user SET readiness = ? WHERE id = ?`
-
-	stmt, err := s.Prepare(query)
-	if err != nil {
-		return status.Errorf(codes.Internal, "could not prepare statement for database: %v", err)
-	}
-
-	if _, err = stmt.Exec(isReady, id); err != nil {
-		return status.Errorf(codes.Internal, "could not execute statement on database: %v", err)
-	}
-
-	return nil
-}
-
-/////////////////////////////////////////////
-///////////////////////////// RuleStorage ///
-/////////////////////////////////////////////
+///////////////////////////////////////////////
+/////////////////////////////// RuleStorage ///
+///////////////////////////////////////////////
 
 func (s *Sqlite) GetRules(character api.Character, role string, method api.Method) ([]*api.Key, error) {
-	return s.getRules(character, role, method)
-}
-
-func (s *Sqlite) getRules(character api.Character, role string, method api.Method) ([]*api.Key, error) {
-	selectStatement := `SELECT type, name, namespace FROM role WHERE character = ? AND role = ? AND method = ?`
-
-	rows, err := s.Query(selectStatement, character, role, method)
+	rules, err := s.selectRules(&character, &role, &method)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not query database: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("could not find rules for character=%v, role=%v, and method=%v", character, role, method))
 	}
-	defer rows.Close()
 
 	keys := make([]*api.Key, 0)
-
-	for rows.Next() {
-		key := &api.Key{}
-
-		err = rows.Scan(&key.Type, &key.Name, &key.Namespace)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "could not scan results of query: %v", err)
-		}
-
-		keys = append(keys, key)
+	for _, rule := range rules {
+		keys = append(keys, s.sqliteRuleToAPIKey(rule))
 	}
+
 	return keys, nil
 }
 
-/////////////////////////////////////////////
-////////////////////////////////// Helper ///
-/////////////////////////////////////////////
+func (s *Sqlite) insertRule(rule *Rule) error {
+	if err := s.Create(rule).Error; err != nil {
+		return err
+	}
+	return nil
+}
 
-func (s *Sqlite) marshalTimestamp(seconds, nanos int) *timestamp.Timestamp {
-	return &timestamppb.Timestamp{
-		Seconds: int64(seconds),
-		Nanos:   int32(nanos),
+func (s *Sqlite) selectRules(c *api.Character, r *string, m *api.Method) ([]*Rule, error) {
+	rules := []*Rule{}
+
+	db := s.DB
+	if c != nil {
+		db = db.Where("character = ?", c)
+	}
+	if r != nil {
+		db = db.Where("role = ?", r)
+	}
+	if m != nil {
+		db = db.Where("method = ?", m)
+	}
+
+	if err := db.Find(&rules).Error; err != nil {
+		return nil, err
+	}
+
+	return rules, nil
+}
+
+///////////////////////////////////////////////
+//////////////////////////////////// Helper ///
+///////////////////////////////////////////////
+func (s *Sqlite) sqliteToAPIMessage(src *Message) *api.Message {
+	return &api.Message{
+		Key: &api.Key{
+			Type:      src.Type,
+			Name:      src.Name,
+			Namespace: src.Namespace,
+		},
+		Meta: &api.Meta{
+			Owner:        s.sqliteToAPIUser(src.User),
+			CreationTime: timestamppb.New(src.UpdatedAt),
+		},
+		Content: src.Content,
 	}
 }
 
-func (s *Sqlite) makeKey(key *api.Key) (string, string, string) {
-	t := key.Type
-	if t == "" {
-		t = "%"
+func (s *Sqlite) sqliteToAPIUser(src *User) *api.User {
+	return &api.User{
+		Name:      src.Name,
+		Character: src.Character,
+		Role:      src.Role,
+		Readiness: src.Readiness,
+		Status:    src.Status,
 	}
+}
 
-	n := key.Name
-	if n == "" {
-		n = "%"
+func (s *Sqlite) sqliteRuleToAPIKey(src *Rule) *api.Key {
+	return &api.Key{
+		Type:      src.Type,
+		Name:      src.Name,
+		Namespace: src.Namespace,
 	}
+}
 
-	ns := key.Namespace
-	if ns == "" {
-		ns = "%"
-	}
+/////////////////////////////////////////////
+/////////////////////////////////// Types ///
+/////////////////////////////////////////////
+type User struct {
+	CreatedAt time.Time      `gorm:""`
+	UpdatedAt time.Time      `gorm:""`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+	Name      string         `gorm:"primaryKey;autoIncrement:false;notNull"`
+	Token     string         `gorm:"unique;index;notNull"`
+	Role      string         `gorm:"notNull;default:''"`
+	Readiness bool           `gorm:"notNull;default:false"`
+	Character api.Character  `gorm:"notNull;default:0"`
+	Status    api.Status     `gorm:"notNull;default:0"`
+}
 
-	return t, n, ns
+type Rule struct {
+	gorm.Model
+	Method    api.Method    `gorm:"notNull;default:0"`
+	Type      string        `gorm:"notNull;default:''"`
+	Name      string        `gorm:"notNull;default:''"`
+	Namespace string        `gorm:"notNull;default:''"`
+	Role      string        `gorm:"notNull;default:''"`
+	Character api.Character `gorm:"notNull;default:0"`
+}
+
+type Message struct {
+	CreatedAt time.Time      `gorm:""`
+	UpdatedAt time.Time      `gorm:""`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+	Type      string         `gorm:"primaryKey;autoIncrement:false;notNull"`
+	Name      string         `gorm:"primaryKey;autoIncrement:false;notNull"`
+	Namespace string         `gorm:"primaryKey;autoIncrement:false;notNull"`
+	Content   string         `gorm:"notNull;default:''"`
+	UserName  string         `gorm:"notNull"`
+	User      *User          `gorm:"foreignKey:UserName;references:Name;notNull"`
 }

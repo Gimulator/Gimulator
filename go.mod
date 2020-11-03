@@ -3,7 +3,7 @@ module github.com/Gimulator/Gimulator
 go 1.14
 
 require (
-	github.com/Gimulator/protobuf v0.0.0-20201031210546-1e4f72c6821e
+	github.com/Gimulator/protobuf v0.0.0-20201102082832-73de3b11fdeb
 	github.com/golang/gddo v0.0.0-20200831202555-721e228c7686
 	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/mux v1.8.0
@@ -13,10 +13,13 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.7.0
+	github.com/streadway/amqp v1.0.0
 	golang.org/x/net v0.0.0-20201022231255-08b38378de70 // indirect
 	golang.org/x/sys v0.0.0-20201022201747-fb209a7c41cd // indirect
 	google.golang.org/genproto v0.0.0-20201022181438-0ff5f38871d5 // indirect
 	google.golang.org/grpc v1.33.1
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/yaml.v2 v2.3.0
+	gorm.io/driver/sqlite v1.1.3
+	gorm.io/gorm v1.20.5
 )

@@ -10,12 +10,12 @@ import (
 
 var (
 	gimulatorConfigDir           string = "/etc/gimulator"
-	gimulatorRolesFileName       string = "roles.yaml"
+	gimulatorRolesFileName       string = "rules.yaml"
 	gimulatorCredentialsFileName string = "credentials.yaml"
 )
 
 type Rule struct {
-	Key     *api.Key     `yaml:"key"`
+	Key     api.Key      `yaml:"key"`
 	Methods []api.Method `yaml:"methods"`
 }
 
@@ -27,7 +27,7 @@ type Character struct {
 }
 
 type Credential struct {
-	ID        string        `yaml:"id"`
+	Name      string        `yaml:"name"`
 	Token     string        `yaml:"token"`
 	Character api.Character `yaml:"character"`
 	Role      string        `yaml:"role"`
@@ -72,30 +72,26 @@ func newCharacter(dir string) (Character, error) {
 	}
 
 	character.Director = append(character.Director, Rule{
-		Key: nil,
+		Key: api.Key{},
 		Methods: []api.Method{
-			api.Method_GetActorWithID,
-			api.Method_GetActorsWithRole,
-			api.Method_GetAllActors,
+			api.Method_GetActors,
 			api.Method_PutResult,
 		},
 	})
 
 	character.Operator = append(character.Operator, Rule{
-		Key: nil,
+		Key: api.Key{},
 		Methods: []api.Method{
-			api.Method_SetUserStatusUnknown,
-			api.Method_SetUserStatusRunning,
-			api.Method_SetUserStatusFailed,
+			api.Method_SetUserStatus,
 		},
 	})
 
 	for i := range character.Actors {
 		character.Actors[i] = append(character.Actors[i], Rule{
-			Key: nil,
+			Key: api.Key{},
 			Methods: []api.Method{
 				api.Method_ImReady,
-			}
+			},
 		})
 	}
 

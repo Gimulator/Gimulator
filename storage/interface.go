@@ -5,21 +5,21 @@ import (
 )
 
 type MessageStorage interface {
-	Put(*api.Message) error
-	Delete(*api.Key) error
-	DeleteAll(*api.Key) error
-	Get(*api.Key) (*api.Message, error)
-	GetAll(*api.Key) ([]*api.Message, error)
+	Put(message *api.Message) error
+	Delete(key *api.Key) error
+	DeleteAll(key *api.Key) error
+	Get(key *api.Key) (*api.Message, error)
+	GetAll(key *api.Key) ([]*api.Message, error)
 }
 
 type UserStorage interface {
-	GetUserWithToken(string) (*api.User, error)
-	GetUserWithID(string) (*api.User, error)
-	GetUsers(api.Character) ([]*api.User, error)
-	UpdateUserStatus(string, api.Status) error
-	UpdateUserReadiness(string, bool) error
+	GetUsers(name *string, token *string, character *api.Character, role *string, readiness *bool, status *api.Status) ([]*api.User, error)
+	GetUserWithToken(token string) (*api.User, error)
+	GetUserWithName(name string) (*api.User, error)
+	UpdateUserStatus(name string, status api.Status) error
+	UpdateUserReadiness(name string, readiness bool) error
 }
 
-type RoleStorage interface {
-	GetRules(api.Character, string, api.Method) ([]*api.Key, error)
+type RuleStorage interface {
+	GetRules(character api.Character, role string, method api.Method) ([]*api.Key, error)
 }

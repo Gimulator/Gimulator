@@ -1,109 +1,222 @@
 package manager
 
 import (
+	"fmt"
+
 	"github.com/Gimulator/Gimulator/storage"
 	"github.com/Gimulator/protobuf/go/api"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Manager struct {
 	userStorage storage.UserStorage
-	roleStorage storage.RoleStorage
+	ruleStorage storage.RuleStorage
 }
 
-func NewManager(credStorage storage.UserStorage, roleStorage storage.RoleStorage) (*Manager, error) {
+func NewManager(credStorage storage.UserStorage, roleStorage storage.RuleStorage) (*Manager, error) {
 	return &Manager{
 		userStorage: credStorage,
-		roleStorage: roleStorage,
+		ruleStorage: roleStorage,
 	}, nil
 }
 
 func (m *Manager) Authenticate(token string) (*api.User, error) {
 	user, err := m.userStorage.GetUserWithToken(token)
-	if err == nil {
-		return user, nil
-	}
-
-	if status.Code(err) == codes.NotFound {
-		return user, status.Errorf(codes.Unauthenticated, "invalid token")
+	if err != nil {
+		return nil, err
 	}
 	return user, err
 }
 
-func (m *Manager) UpdateStatus(id string, st api.Status) error {
-	return m.userStorage.UpdateUserStatus(id, st)
+func (m *Manager) UpdateStatus(name string, status api.Status) error {
+	return m.userStorage.UpdateUserStatus(name, status)
 }
 
-func (m *Manager) UpdateReadiness(id string, isReady bool) error {
-	return m.userStorage.UpdateUserReadiness(id, isReady)
+func (m *Manager) UpdateReadiness(name string, readiness bool) error {
+	return m.userStorage.UpdateUserReadiness(name, readiness)
 }
 
-func (m *Manager) GetUserWithID(id string) (*api.User, error) {
-	return m.userStorage.GetUserWithID(id)
+func (m *Manager) GetUserWithName(id string) (*api.User, error) {
+	return m.userStorage.GetUserWithName(id)
 }
 
-func (m *Manager) GetUsersWithCharacter(character api.Character) ([]*api.User, error) {
-	return m.userStorage.GetUsersWithCharacter(character)
+func (m *Manager) GetActors() ([]*api.User, error) {
+	char := api.Character_actor
+	return m.userStorage.GetUsers(nil, nil, &char, nil, nil, nil)
 }
 
-func (m *Manager) Authorize(user *api.User, method api.Method, info interface{}) error {
-	switch user.Character {
-	case api.Character_director:
-		return m.validateDirectorAction(user, method, info)
-	case api.Character_master:
-		return m.validateMasterAction(user, method, info)
-	case api.Character_operator:
-		return m.validateOperatorAction(user, method, info)
-	case api.Character_actor:
-		return m.validateActorAction(user, method, info)
-	default:
-		return status.Error(codes.Internal, "could not find character")
+func (m *Manager) AuthorizeGetMethod(user *api.User, key *api.Key) error {
+	if err := m.checkKeyNilness(key); err != nil {
+		return err
 	}
-}
 
-func (m *Manager) validateDirectorAction(user *api.User, method api.Method, info interface{}) error {
-	switch method {
-	case api.Method_GetActorWithID:
-		return nil
-	case api.Method_GetActorsWithRole:
-		return nil
-	case api.Method_GetAllActors:
-		return nil
-	case api.Method_PutResult:
-		return nil
-	case api.Method_Put:
-		key, ok := info.(*api.Key)
-		if !ok {
+	if err := m.checkKeyCompleteness(key); err != nil {
+		return err
+	}
+
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_Get)
+	if err != nil {
+		return err
+	}
+
+	for _, base := range keys {
+		if m.match(base, key) {
+			return nil
 		}
-		return m.validateMessageAPIMethods(api.Character_director, "", method)
-	case api.Method_Get:
-	case api.Method_GetAll:
-	case api.Method_Delete:
-	case api.Method_DeleteAll:
-	case api.Method_Watch:
-	default:
-		return status.Errorf(codes.PermissionDenied, "invalid action by the director")
 	}
+
+	return status.Error(codes.PermissionDenied, fmt.Sprintf("invalid action: you don't have permission to get a message with key=%v", key))
 }
 
-func (m *Manager) validateMasterAction(user *api.User, method api.Method, info interface{}) error {
+func (m *Manager) AuthorizeGetAllMethod(user *api.User, key *api.Key) error {
+	if err := m.checkKeyNilness(key); err != nil {
+		return err
+	}
+
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_GetAll)
+	if err != nil {
+		return err
+	}
+
+	for _, base := range keys {
+		if m.match(base, key) {
+			return nil
+		}
+	}
+
+	return status.Error(codes.PermissionDenied, fmt.Sprintf("invalid action: you don't have permission to get all messages with key=%v", key))
+}
+
+func (m *Manager) AuthorizePutMethod(user *api.User, key *api.Key) error {
+	if err := m.checkKeyNilness(key); err != nil {
+		return err
+	}
+
+	if err := m.checkKeyCompleteness(key); err != nil {
+		return err
+	}
+
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_Put)
+	if err != nil {
+		return err
+	}
+
+	for _, base := range keys {
+		if m.match(base, key) {
+			return nil
+		}
+	}
+
+	return status.Error(codes.PermissionDenied, fmt.Sprintf("invalid action: you don't have permission to put a message with key=%v", key))
+}
+
+func (m *Manager) AuthorizeDeleteMethod(user *api.User, key *api.Key) error {
+	if err := m.checkKeyNilness(key); err != nil {
+		return err
+	}
+
+	if err := m.checkKeyCompleteness(key); err != nil {
+		return err
+	}
+
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_Delete)
+	if err != nil {
+		return err
+	}
+
+	for _, base := range keys {
+		if m.match(base, key) {
+			return nil
+		}
+	}
+
+	return status.Error(codes.PermissionDenied, fmt.Sprintf("invalid action: you don't have permission to delete a message with key=%v", key))
+}
+
+func (m *Manager) AuthorizeDeleteAllMethod(user *api.User, key *api.Key) error {
+	if err := m.checkKeyNilness(key); err != nil {
+		return err
+	}
+
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_DeleteAll)
+	if err != nil {
+		return err
+	}
+
+	for _, base := range keys {
+		if m.match(base, key) {
+			return nil
+		}
+	}
+
+	return status.Error(codes.PermissionDenied, fmt.Sprintf("invalid action: you don't have permission to delete all messages with key=%v", key))
+}
+
+func (m *Manager) AuthorizeWatchMethod(user *api.User, key *api.Key) error {
+	if err := m.checkKeyNilness(key); err != nil {
+		return err
+	}
+
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_DeleteAll)
+	if err != nil {
+		return err
+	}
+
+	for _, base := range keys {
+		if m.match(base, key) {
+			return nil
+		}
+	}
+
+	return status.Error(codes.PermissionDenied, fmt.Sprintf("invalid action: you don't have permission to watch messages with key=%v", key))
+}
+
+func (m *Manager) AuthorizeSetUserStatusMethod(user *api.User, report *api.Report) error {
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_SetUserStatus)
+	if err != nil {
+		return err
+	}
+
+	if len(keys) > 0 {
+		return nil
+	}
+
+	return status.Error(codes.PermissionDenied, "invalid action: you don't have permission to update user's status")
+}
+
+func (m *Manager) AuthorizeGetActorsMethod(user *api.User) error {
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_GetActors)
+	if err != nil {
+		return err
+	}
+
+	if len(keys) > 0 {
+		return nil
+	}
+
+	return status.Error(codes.PermissionDenied, "invalid action: you don't have permission to get actors")
+}
+
+func (m *Manager) AuthorizePutResultMethod(user *api.User) error {
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_PutResult)
+	if err != nil {
+		return err
+	}
+
+	if len(keys) > 0 {
+		return nil
+	}
+
+	return status.Error(codes.PermissionDenied, "invalid action: you don't have permission to put the result of room")
+}
+
+func (m *Manager) AuthorizeImReadyMethod(user *api.User) error {
 	return nil
-}
-
-func (m *Manager) validateOperatorAction(user *api.User, method api.Method, info interface{}) error {
-	return nil
-}
-
-func (m *Manager) validateActorAction(user *api.User, role string, method api.Method, info interface{}) error {
-
-	return status.Errorf(codes.PermissionDenied, "")
 }
 
 func (m *Manager) validateMessageAPIMethods(character api.Character, role string, method api.Method, check *api.Key) error {
-	keys, err := m.roleStorage.GetRules(character, role, method)
+	keys, err := m.ruleStorage.GetRules(character, role, method)
 	if err != nil {
 		return err
 	}
@@ -114,21 +227,6 @@ func (m *Manager) validateMessageAPIMethods(character api.Character, role string
 		}
 	}
 	return status.Error(codes.PermissionDenied, "could not find any rule to match with your action")
-}
-
-func (m *Manager) SetupMessage(token string, message *api.Message) error {
-	user, err := m.userStorage.GetUserWithToken(token)
-	if err != nil {
-		return err
-	}
-
-	message.Meta = &api.Meta{
-		CreationTime: timestamppb.Now(),
-		Owner:        user.Id,
-		Role:         user.Role,
-	}
-
-	return nil
 }
 
 func (m *Manager) match(base, check *api.Key) bool {
@@ -142,4 +240,24 @@ func (m *Manager) match(base, check *api.Key) bool {
 		return false
 	}
 	return true
+}
+
+func (m *Manager) checkKeyNilness(k *api.Key) error {
+	if k == nil {
+		return status.Error(codes.InvalidArgument, "invalid key: key can not be null")
+	}
+	return nil
+}
+
+func (m *Manager) checkKeyCompleteness(k *api.Key) error {
+	if k.Type != "" {
+		return status.Error(codes.InvalidArgument, "invalid key: type of key can not be empty")
+	}
+	if k.Name != "" {
+		return status.Error(codes.InvalidArgument, "invalid key: name of key can not be empty")
+	}
+	if k.Namespace != "" {
+		return status.Error(codes.InvalidArgument, "invalid key: namespace of key can not be empty")
+	}
+	return nil
 }
