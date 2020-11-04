@@ -14,7 +14,7 @@ type identifier struct {
 	namespace string
 }
 
-//Casts a key type to an identifier type
+///Casts a key type to an identifier type
 func keyToiden(key *api.Key) *identifier {
 	return &identifier{
 		theType:   key.Type,
