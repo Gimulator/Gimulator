@@ -10,7 +10,7 @@ import (
 
 var (
 	gimulatorConfigDir           string = "/etc/gimulator"
-	gimulatorRolesFileName       string = "rules.yaml"
+	gimulatorRulesFileName       string = "rules.yaml"
 	gimulatorCredentialsFileName string = "credentials.yaml"
 )
 
@@ -59,7 +59,7 @@ func newCharacter(dir string) (Character, error) {
 	if dir == "" {
 		dir = gimulatorConfigDir
 	}
-	path := filepath.Join(dir, gimulatorRolesFileName)
+	path := filepath.Join(dir, gimulatorRulesFileName)
 
 	file, err := os.Open(path)
 	if err != nil {

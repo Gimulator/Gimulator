@@ -158,7 +158,7 @@ func (m *Manager) AuthorizeWatchMethod(user *api.User, key *api.Key) error {
 		return err
 	}
 
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_DeleteAll)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_Watch)
 	if err != nil {
 		return err
 	}
@@ -250,13 +250,13 @@ func (m *Manager) checkKeyNilness(k *api.Key) error {
 }
 
 func (m *Manager) checkKeyCompleteness(k *api.Key) error {
-	if k.Type != "" {
+	if k.Type == "" {
 		return status.Error(codes.InvalidArgument, "invalid key: type of key can not be empty")
 	}
-	if k.Name != "" {
+	if k.Name == "" {
 		return status.Error(codes.InvalidArgument, "invalid key: name of key can not be empty")
 	}
-	if k.Namespace != "" {
+	if k.Namespace == "" {
 		return status.Error(codes.InvalidArgument, "invalid key: namespace of key can not be empty")
 	}
 	return nil

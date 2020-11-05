@@ -3,7 +3,7 @@ module github.com/Gimulator/Gimulator
 go 1.14
 
 require (
-	github.com/Gimulator/protobuf v0.0.0-20201102082832-73de3b11fdeb
+	github.com/Gimulator/protobuf v0.0.0-20201105113819-9a689c6a6b70
 	github.com/golang/gddo v0.0.0-20200831202555-721e228c7686
 	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/mux v1.8.0
