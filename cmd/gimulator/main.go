@@ -96,11 +96,10 @@ func main() {
 		panic(err)
 	}
 
-	port := os.Getenv("GIMULATOR_SERVICE_PORT")
-	if port == "" {
-		port = "23579"
+	host := os.Getenv("GIMULATOR_HOST")
+	if host == "" {
+		host = "0.0.0.0:23579"
 	}
-	host := "0.0.0.0:" + port
 
 	log.WithField("host", host).Info("starting to setup listener")
 	listener, err := net.Listen("tcp", host)
