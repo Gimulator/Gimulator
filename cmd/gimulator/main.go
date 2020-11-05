@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"net"
-	"os"
 	"path"
 	"runtime"
 
 	"github.com/Gimulator/Gimulator/api"
+	"github.com/Gimulator/Gimulator/cmd"
 	"github.com/Gimulator/Gimulator/config"
 	"github.com/Gimulator/Gimulator/manager"
 	"github.com/Gimulator/Gimulator/mq"
@@ -26,6 +26,8 @@ func sort(str []string) {
 }
 
 func init() {
+	cmd.ParseFlags()
+
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.SetReportCaller(true)
 
@@ -45,11 +47,10 @@ func init() {
 func main() {
 	log := logrus.WithField("component", "main")
 
-	configDir := os.Getenv("GIMULATOR_CONFIG_DIR")
-	log.WithField("config-dir", configDir).Info("starting to setup configs")
-	config, err := config.NewConfig(configDir)
+	log.WithField("config-dir", cmd.ConfigDir).Info("starting to setup configs")
+	config, err := config.NewConfig(cmd.ConfigDir)
 	if err != nil {
-		log.WithField("config-dir", configDir).WithError(err).Fatal("could not setup configs")
+		log.WithField("config-dir", cmd.ConfigDir).WithError(err).Fatal("could not setup configs")
 		panic(err)
 	}
 
@@ -74,17 +75,7 @@ func main() {
 		panic(err)
 	}
 
-	log.Info("starting to setup RabbitMQ")
-	rabbitURL := os.Getenv("GIMULATOR_RABBIT_URL")
-	if rabbitURL == "" {
-		panic("set th 'GIMULATOR_RABBIT_URL' environment variable for sending result to RabbitMQ")
-	}
-	rabbitQueue := os.Getenv("GIMULATOR_RABBIT_RESULT_QUEUE")
-	if rabbitQueue == "" {
-		panic("set th 'GIMULATOR_RABBIT_RESULT_QUEUE' environment variable for sending result to RabbitMQ")
-	}
-
-	rabbit, err := mq.NewRabbit(rabbitURL, rabbitQueue)
+	rabbit, err := mq.NewRabbit(cmd.RabbitURL, cmd.RabbitResultQueue)
 	if err != nil {
 		panic(err)
 	}
@@ -96,13 +87,8 @@ func main() {
 		panic(err)
 	}
 
-	host := os.Getenv("GIMULATOR_HOST")
-	if host == "" {
-		host = "0.0.0.0:23579"
-	}
-
-	log.WithField("host", host).Info("starting to setup listener")
-	listener, err := net.Listen("tcp", host)
+	log.WithField("host", cmd.Host).Info("starting to setup listener")
+	listener, err := net.Listen("tcp", cmd.Host)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup listener")
 		panic(err)
