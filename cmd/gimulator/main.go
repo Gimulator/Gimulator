@@ -81,7 +81,7 @@ func main() {
 	}
 	rabbitQueue := os.Getenv("GIMULATOR_RABBIT_RESULT_QUEUE")
 	if rabbitQueue == "" {
-		panic("set th 'GIMULATOR_RABBIT_QUEUE' environment variable for sending result to RabbitMQ")
+		panic("set th 'GIMULATOR_RABBIT_RESULT_QUEUE' environment variable for sending result to RabbitMQ")
 	}
 
 	rabbit, err := mq.NewRabbit(rabbitURL, rabbitQueue)
