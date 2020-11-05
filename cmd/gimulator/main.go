@@ -79,7 +79,7 @@ func main() {
 	if rabbitURL == "" {
 		panic("set th 'GIMULATOR_RABBIT_URL' environment variable for sending result to RabbitMQ")
 	}
-	rabbitQueue := os.Getenv("GIMULATOR_RABBIT_QUEUE")
+	rabbitQueue := os.Getenv("GIMULATOR_RABBIT_RESULT_QUEUE")
 	if rabbitQueue == "" {
 		panic("set th 'GIMULATOR_RABBIT_QUEUE' environment variable for sending result to RabbitMQ")
 	}
