@@ -3,89 +3,115 @@ package storage
 import (
 	"fmt"
 
-	"github.com/Gimulator/Gimulator/object"
+	"github.com/Gimulator/protobuf/go/api"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
+type identifier struct {
+	theType   string
+	name      string
+	namespace string
+}
+
+///Casts a key type to an identifier type
+func keyToiden(key *api.Key) *identifier {
+	return &identifier{
+		theType:   key.Type,
+		name:      key.Name,
+		namespace: key.Namespace,
+	}
+}
+
 type Memory struct {
-	storage map[object.Key]*object.Object
+	storage map[identifier]*api.Message
 }
 
 func NewMemory() *Memory {
 	return &Memory{
-		storage: make(map[object.Key]*object.Object),
+		storage: make(map[identifier]*api.Message),
 	}
 }
 
-func (m *Memory) Get(key *object.Key) (*object.Object, error) {
-	return m.get(key)
-}
-
-func (m *Memory) Set(obj *object.Object) error {
-	return m.set(obj)
-}
-
-func (m *Memory) Delete(key *object.Key) error {
-	return m.delete(key)
-}
-
-func (m *Memory) Find(key *object.Key) ([]*object.Object, error) {
-	return m.find(key), nil
-}
-
-func (m *Memory) get(key *object.Key) (*object.Object, error) {
-	err := m.validateKey(key)
+func (m *Memory) Get(key *api.Key) (*api.Message, error) {
+	iden := keyToiden(key)
+	getMsgResult, err := m.get(iden)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, fmt.Sprintf("could not get any message for key=%v", iden))
 	}
-
-	if object, exists := m.storage[*key]; exists {
-		return object, nil
-	}
-	return nil, fmt.Errorf("object with key=%v does not exist", key)
+	return getMsgResult, nil
 }
 
-func (m *Memory) set(obj *object.Object) error {
-	err := m.validateKey(obj.Key)
-	if err != nil {
-		return err
+func (m *Memory) get(iden *identifier) (*api.Message, error) {
+	if msg, exists := m.storage[*iden]; exists {
+		return msg, nil
 	}
+	return nil, fmt.Errorf("object message with key=%v does not exist", iden)
+}
 
-	m.storage[*obj.Key] = obj
+//puts a message in storage
+func (m *Memory) Put(msg *api.Message) error {
+	putMsgResult := m.put(msg)
+	if putMsgResult != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("could not put message=%v in storage", msg))
+	}
+	return putMsgResult
+}
+
+func (m *Memory) put(msg *api.Message) error {
+	iden := keyToiden(msg.Key)
+	m.storage[*iden] = msg
 	return nil
 }
 
-func (m *Memory) delete(key *object.Key) error {
-	err := m.validateKey(key)
-	if err != nil {
-		return err
+func (m *Memory) Delete(key *api.Key) error {
+	iden := keyToiden(key)
+	delMsgResult := m.delete(iden)
+	if delMsgResult != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("could not delete message with key=%v ", iden))
 	}
-
-	if _, exists := m.storage[*key]; exists {
-		delete(m.storage, *key)
-		return nil
-	}
-	return fmt.Errorf("object with key=%v does not exist", key)
+	return delMsgResult
 }
 
-func (m *Memory) find(key *object.Key) []*object.Object {
-	result := make([]*object.Object, 0)
-	for k, o := range m.storage {
-		if key.Match(&k) {
+func (m *Memory) delete(iden *identifier) error {
+	if _, exists := m.storage[*iden]; exists {
+		delete(m.storage, *iden)
+		return nil
+	}
+	return fmt.Errorf("message object with key=%v does not exist", iden)
+}
+
+func (m *Memory) GetAll(key *api.Key) ([]*api.Message, error) {
+	iden := keyToiden(key)
+	getallMsgsResult, err := m.getall(iden)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("could not getall messages with key=%v ", iden))
+	}
+	return getallMsgsResult, nil
+}
+
+func (m *Memory) getall(iden *identifier) ([]*api.Message, error) {
+	result := make([]*api.Message, 0)
+	for i, o := range m.storage {
+		if iden.matchKeys(&i) {
 			result = append(result, o)
 		}
 	}
-	return result
+
+	if result != nil {
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("no messages matched with key=%v ", iden)
 }
 
-func (m *Memory) validateKey(key *object.Key) error {
-	if key.Name == "" {
-		return fmt.Errorf("invalid key with empty Name")
+func (iden *identifier) matchKeys(key *identifier) bool {
+	if iden.theType != "" && iden.theType != key.theType {
+		return false
+	} else if iden.namespace != "" && iden.namespace != key.namespace {
+		return false
+	} else if iden.name != "" && iden.name != key.name {
+		return false
 	}
-	if key.Namespace == "" {
-		return fmt.Errorf("invalid key with empty Namespace")
-	}
-	if key.Type == "" {
-		return fmt.Errorf("invalid key with empty Type")
-	}
-	return nil
+	return true
 }
