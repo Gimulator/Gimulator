@@ -75,7 +75,7 @@ func main() {
 		panic(err)
 	}
 
-	rabbit, err := mq.NewRabbit(cmd.RabbitURL, cmd.RabbitResultQueue)
+	rabbit, err := mq.NewRabbit(cmd.RabbitHost, cmd.RabbitUsername, cmd.RabbitPassword, cmd.RabbitQueue)
 	if err != nil {
 		panic(err)
 	}

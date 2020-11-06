@@ -2,6 +2,7 @@ package mq
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/sirupsen/logrus"
@@ -9,36 +10,35 @@ import (
 )
 
 type Rabbit struct {
-	url       string
-	queueName string
-	log       *logrus.Entry
+	uri   string
+	queue string
+	log   *logrus.Entry
+	ch    *amqp.Channel
 }
 
-func NewRabbit(url string, queueName string) (*Rabbit, error) {
+func NewRabbit(host, username, password, queueName string) (*Rabbit, error) {
+	uri := fmt.Sprintf("amqps://%v:%v@%v:5671", username, password, host)
 	r := &Rabbit{
-		url:       url,
-		queueName: queueName,
-		log:       logrus.WithField("component", "rabbit"),
+		uri:   uri,
+		queue: queueName,
+		log:   logrus.WithField("component", "rabbit"),
 	}
 
-	if err := r.test(); err != nil {
+	conn, err := amqp.Dial(r.uri)
+	if err != nil {
 		return nil, err
 	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+	r.ch = ch
+
 	return r, nil
 }
 
 func (r *Rabbit) test() error {
-	conn, err := amqp.Dial(r.url)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-	if err != nil {
-		return err
-	}
-	defer ch.Close()
 
 	return nil
 }
@@ -54,30 +54,14 @@ func (r *Rabbit) Send(result *api.Result) error {
 	}
 	body := string(data)
 
-	r.log.Info("starting to open a new connection")
-	conn, err := amqp.Dial(r.url)
-	if err != nil {
-		r.log.WithError(err).Error("could not open new connection")
-		return err
-	}
-	defer conn.Close()
-
-	r.log.Info("starting to create a new channel from connection")
-	ch, err := conn.Channel()
-	if err != nil {
-		r.log.WithError(err).Error("could not create new channel from connection")
-		return err
-	}
-	defer ch.Close()
-
 	r.log.Info("starting to declare queue")
-	queue, err := ch.QueueDeclare(
-		r.queueName, // name
-		true,        // durable
-		false,       // delete when unused
-		false,       // exclusive
-		false,       // no-wait
-		nil,         // arguments
+	queue, err := r.ch.QueueDeclare(
+		r.queue, // name
+		true,    // durable
+		false,   // delete when unused
+		false,   // exclusive
+		false,   // no-wait
+		nil,     // arguments
 	)
 	if err != nil {
 		r.log.WithError(err).Error("could not declare queue")
@@ -85,7 +69,7 @@ func (r *Rabbit) Send(result *api.Result) error {
 	}
 
 	r.log.Info("starting to publish message")
-	if err := ch.Publish(
+	if err := r.ch.Publish(
 		"",         // exchange
 		queue.Name, // routing key
 		false,      // mandatory
