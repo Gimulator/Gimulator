@@ -25,13 +25,13 @@ func ParseFlags() {
 	flag.Parse()
 
 	if RabbitHost == "" {
-		RabbitHost = os.Getenv("GIMULATOR_RABBIT_URL")
+		RabbitHost = os.Getenv("GIMULATOR_RABBIT_HOST")
 	}
 	if RabbitUsername == "" {
-		RabbitUsername = os.Getenv("GIMULATOR_RABBIT_URL")
+		RabbitUsername = os.Getenv("GIMULATOR_RABBIT_USERNAME")
 	}
 	if RabbitPassword == "" {
-		RabbitPassword = os.Getenv("GIMULATOR_RABBIT_URL")
+		RabbitPassword = os.Getenv("GIMULATOR_RABBIT_PASSWORD")
 	}
 	if RabbitQueue == "" {
 		RabbitQueue = os.Getenv("GIMULATOR_RABBIT_RESULT_QUEUE")

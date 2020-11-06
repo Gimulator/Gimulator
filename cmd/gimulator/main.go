@@ -68,15 +68,17 @@ func main() {
 		panic(err)
 	}
 
-	log.Info("starting to setup auther")
+	log.Info("starting to setup manager")
 	manager, err := manager.NewManager(sqlite, sqlite)
 	if err != nil {
-		log.WithError(err).Fatal("could not setup auther")
+		log.WithError(err).Fatal("could not setup manager")
 		panic(err)
 	}
 
+	log.Info("starting to setup rabbit")
 	rabbit, err := mq.NewRabbit(cmd.RabbitHost, cmd.RabbitUsername, cmd.RabbitPassword, cmd.RabbitQueue)
 	if err != nil {
+		log.WithError(err).Fatal("could not setup rabbit")
 		panic(err)
 	}
 
