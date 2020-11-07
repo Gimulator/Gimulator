@@ -111,8 +111,8 @@ func (s *Sqlite) fillRuleTable(config *config.Config) error {
 				Type:      rule.Key.Type,
 				Name:      rule.Key.Name,
 				Namespace: rule.Key.Namespace,
-				Role:      "",
-				Character: api.Character_name[int32(api.Character_director)],
+				Role:      api.Character_name[int32(api.Character_director)],
+				Character: api.Character_director,
 			}); err != nil {
 				return err
 			}
@@ -126,7 +126,7 @@ func (s *Sqlite) fillRuleTable(config *config.Config) error {
 				Type:      rule.Key.Type,
 				Name:      rule.Key.Name,
 				Namespace: rule.Key.Namespace,
-				Role:      "",
+				Role:      api.Character_name[int32(api.Character_operator)],
 				Character: api.Character_operator,
 			}); err != nil {
 				return err
@@ -141,7 +141,7 @@ func (s *Sqlite) fillRuleTable(config *config.Config) error {
 				Type:      rule.Key.Type,
 				Name:      rule.Key.Name,
 				Namespace: rule.Key.Namespace,
-				Role:      "",
+				Role:      api.Character_name[int32(api.Character_master)],
 				Character: api.Character_master,
 			}); err != nil {
 				return err
@@ -373,13 +373,16 @@ func (s *Sqlite) updateUser(name string, r *bool, st *api.Status) error {
 
 	tx := db.Updates(updates)
 
-	if err := tx.Error; err != nil {
-		return err
+	if tx.Error != nil {
+		return tx.Error
 	}
 
 	totalAffectedRows := tx.RowsAffected
-	if totalAffectedRows == 1 { //chon vase 1 usere
-		updates["LastUserStatusUpdateTime"] = time.Now().Format(time.StampMicro)
+	if st != nil && totalAffectedRows == 1 {
+		updates["LastStatusUpdateTime"] = time.Now().Format(time.StampNano)
+		if err := db.Updates(updates).Error; err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -501,16 +504,16 @@ func (s *Sqlite) sqliteRuleToAPIKey(src *Rule) *api.Key {
 /////////////////////////////////// Types ///
 /////////////////////////////////////////////
 type User struct {
-	CreatedAt                time.Time      `gorm:""`
-	UpdatedAt                time.Time      `gorm:""`
-	DeletedAt                gorm.DeletedAt `gorm:"index"`
-	Name                     string         `gorm:"primaryKey;autoIncrement:false;notNull"`
-	Token                    string         `gorm:"unique;index;notNull"`
-	Role                     string         `gorm:"notNull;default:''"`
-	Readiness                bool           `gorm:"notNull;default:false"`
-	Character                api.Character  `gorm:"notNull;default:0"`
-	Status                   api.Status     `gorm:"notNull;default:0"`
-	LastUserStatusUpdateTime time.Time      `gorm:""`
+	CreatedAt            time.Time      `gorm:""`
+	UpdatedAt            time.Time      `gorm:""`
+	DeletedAt            gorm.DeletedAt `gorm:"index"`
+	Name                 string         `gorm:"primaryKey;autoIncrement:false;notNull"`
+	Token                string         `gorm:"unique;index;notNull"`
+	Role                 string         `gorm:"notNull;default:''"`
+	Readiness            bool           `gorm:"notNull;default:false"`
+	Character            api.Character  `gorm:"notNull;default:0"`
+	Status               api.Status     `gorm:"notNull;default:0"`
+	LastStatusUpdateTime time.Time      `gorm:""`
 }
 
 type Rule struct {
