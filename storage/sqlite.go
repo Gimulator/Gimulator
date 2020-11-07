@@ -197,7 +197,7 @@ func (s *Sqlite) Get(key *api.Key) (*api.Message, error) {
 	}
 
 	if len(messages) < 1 {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("could not find any message with key=%v: %v", key, err.Error()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("could not find any message with key=%v", key))
 	}
 
 	return s.sqliteToAPIMessage(messages[0]), nil
