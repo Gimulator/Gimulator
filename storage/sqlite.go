@@ -112,7 +112,7 @@ func (s *Sqlite) fillRuleTable(config *config.Config) error {
 				Name:      rule.Key.Name,
 				Namespace: rule.Key.Namespace,
 				Role:      "",
-				Character: api.Character_director,
+				Character: api.Character_name[int32(api.Character_director)],
 			}); err != nil {
 				return err
 			}
