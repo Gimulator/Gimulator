@@ -388,7 +388,8 @@ func (s *Sqlite) updateUser(name string, r *bool, st *api.Status) error {
 
 	totalAffectedRows := tx.RowsAffected
 	if st != nil && totalAffectedRows == 1 {
-		updates["LastStatusUpdateTime"] = time.Now().Format(time.StampNano)
+		db.UpdateColumn("LastStatusUpdateTime", time.Now())
+		
 		if err := db.Updates(updates).Error; err != nil {
 			return err
 		}
