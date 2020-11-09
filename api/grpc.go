@@ -448,8 +448,8 @@ func (s *Server) extractTokenFromContext(ctx context.Context) (string, error) {
 	return tokens[0], nil
 }
 
-func (s *Server) SendPing(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
-	s.log.Info("starting to send Ping ...")
+func (s *Server) Ping(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
+	s.log.Info("Pinging ...")
 	return &empty.Empty{}, nil
 }
 
