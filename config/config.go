@@ -15,8 +15,8 @@ var (
 )
 
 type Rule struct {
-	Key     api.Key      `yaml:"key"`
-	Methods []api.Method `yaml:"methods"`
+	Key     api.Key  `yaml:"key"`
+	Methods []string `yaml:"methods"`
 }
 
 type Character struct {
@@ -27,10 +27,10 @@ type Character struct {
 }
 
 type Credential struct {
-	Name      string        `yaml:"name"`
-	Token     string        `yaml:"token"`
-	Character api.Character `yaml:"character"`
-	Role      string        `yaml:"role"`
+	Name      string `yaml:"name"`
+	Token     string `yaml:"token"`
+	Character string `yaml:"character"`
+	Role      string `yaml:"role"`
 }
 
 type Config struct {
@@ -72,26 +72,19 @@ func newCharacter(dir string) (Character, error) {
 	}
 
 	character.Director = append(character.Director, Rule{
-		Key: api.Key{},
-		Methods: []api.Method{
-			api.Method_GetActors,
-			api.Method_PutResult,
-		},
+		Key:     api.Key{},
+		Methods: []string{"GetActors", "PutResult"},
 	})
 
 	character.Operator = append(character.Operator, Rule{
-		Key: api.Key{},
-		Methods: []api.Method{
-			api.Method_SetUserStatus,
-		},
+		Key:     api.Key{},
+		Methods: []string{"SetUserStatus"},
 	})
 
 	for i := range character.Actors {
 		character.Actors[i] = append(character.Actors[i], Rule{
-			Key: api.Key{},
-			Methods: []api.Method{
-				api.Method_ImReady,
-			},
+			Key:     api.Key{},
+			Methods: []string{"ImReady"},
 		})
 	}
 
