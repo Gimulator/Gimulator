@@ -44,66 +44,6 @@ func NewSqlite(path string, config *config.Config) (*Sqlite, error) {
 /////////////////////////////////// Setup ///
 /////////////////////////////////////////////
 
-func (s *Sqlite) convertConfigToRule(conf *config.Config) ([]Rule, error) {
-	rules := make([]Rule, 0)
-
-	for role, the_rules := range conf.Character.Actors {
-		for _, rule := range the_rules {
-			for _, method := range rule.Methods {
-				rules = append(rules, Rule{
-					Method:    api.Method(int32(api.Method_value[method])),
-					Type:      rule.Key.Type,
-					Name:      rule.Key.Name,
-					Namespace: rule.Key.Namespace,
-					Role:      role,
-					Character: api.Character_actor,
-				})
-			}
-		}
-	}
-
-	for _, rule := range conf.Character.Director {
-		for _, method := range rule.Methods {
-			rules = append(rules, Rule{
-				Method:    api.Method(int32(api.Method_value[method])),
-				Type:      rule.Key.Type,
-				Name:      rule.Key.Name,
-				Namespace: rule.Key.Namespace,
-				Role:      api.Character_name[int32(api.Character_director)],
-				Character: api.Character_director,
-			})
-		}
-	}
-
-	for _, rule := range conf.Character.Operator {
-		for _, method := range rule.Methods {
-			rules = append(rules, Rule{
-				Method:    api.Method(int32(api.Method_value[method])),
-				Type:      rule.Key.Type,
-				Name:      rule.Key.Name,
-				Namespace: rule.Key.Namespace,
-				Role:      api.Character_name[int32(api.Character_operator)],
-				Character: api.Character_operator,
-			})
-		}
-	}
-
-	for _, rule := range conf.Character.Master {
-		for _, method := range rule.Methods {
-			rules = append(rules, Rule{
-				Method:    api.Method(int32(api.Method_value[method])),
-				Type:      rule.Key.Type,
-				Name:      rule.Key.Name,
-				Namespace: rule.Key.Namespace,
-				Role:      api.Character_name[int32(api.Character_master)],
-				Character: api.Character_master,
-			})
-		}
-	}
-
-	return rules, nil
-}
-
 func (s *Sqlite) prepare(path string, config *config.Config) error {
 	s.log.Info("starting to setup sqlite")
 
@@ -131,9 +71,10 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 		return err
 	}
 
+	s.log.Info("starting to convert config's rules")
 	rules, err := s.convertConfigToRule(config)
-
 	if err != nil {
+		s.log.WithError(err).Error("could not convert config's rules")
 		return err
 	}
 
@@ -152,12 +93,72 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	return nil
 }
 
+func (s *Sqlite) convertConfigToRule(conf *config.Config) ([]Rule, error) {
+	rules := make([]Rule, 0)
+
+	for role, cRules := range conf.Character.Actors {
+		for _, rule := range cRules {
+			for _, method := range rule.Methods {
+				rules = append(rules, Rule{
+					Method:    api.Method(api.Method_value[method]),
+					Type:      rule.Key.Type,
+					Name:      rule.Key.Name,
+					Namespace: rule.Key.Namespace,
+					Role:      role,
+					Character: api.Character_actor,
+				})
+			}
+		}
+	}
+
+	for _, rule := range conf.Character.Director {
+		for _, method := range rule.Methods {
+			rules = append(rules, Rule{
+				Method:    api.Method(api.Method_value[method]),
+				Type:      rule.Key.Type,
+				Name:      rule.Key.Name,
+				Namespace: rule.Key.Namespace,
+				Role:      api.Character_name[int32(api.Character_director)],
+				Character: api.Character_director,
+			})
+		}
+	}
+
+	for _, rule := range conf.Character.Operator {
+		for _, method := range rule.Methods {
+			rules = append(rules, Rule{
+				Method:    api.Method(api.Method_value[method]),
+				Type:      rule.Key.Type,
+				Name:      rule.Key.Name,
+				Namespace: rule.Key.Namespace,
+				Role:      api.Character_name[int32(api.Character_operator)],
+				Character: api.Character_operator,
+			})
+		}
+	}
+
+	for _, rule := range conf.Character.Master {
+		for _, method := range rule.Methods {
+			rules = append(rules, Rule{
+				Method:    api.Method(api.Method_value[method]),
+				Type:      rule.Key.Type,
+				Name:      rule.Key.Name,
+				Namespace: rule.Key.Namespace,
+				Role:      api.Character_name[int32(api.Character_master)],
+				Character: api.Character_master,
+			})
+		}
+	}
+
+	return rules, nil
+}
+
 func (s *Sqlite) fillUserTable(config *config.Config) error {
 	for _, cred := range config.Credentials {
 		if err := s.insertUser(&User{
 			Name:      cred.Name,
 			Token:     cred.Token,
-			Character: api.Character(int32(api.Character_value[cred.Character])), // Character field in config package is string type
+			Character: api.Character(api.Character_value[cred.Character]), // Character field in config package is string type
 			Role:      cred.Role,
 			Readiness: false,
 			Status:    api.Status_unknown,
@@ -206,7 +207,7 @@ func (s *Sqlite) Get(key *api.Key) (*api.Message, error) {
 	}
 
 	if len(messages) < 1 {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("could not find any message with key=%v: %v", key, err.Error()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("could not find any message with key=%v", key))
 	}
 
 	return s.sqliteToAPIMessage(messages[0]), nil
@@ -358,6 +359,8 @@ func (s *Sqlite) selectUserWithToken(t string) (*User, error) {
 }
 
 func (s *Sqlite) insertUser(user *User) error {
+	fmt.Println("------------------------------ user")
+	fmt.Println(user)
 	if err := s.Create(user).Error; err != nil {
 		return err
 	}
@@ -389,7 +392,7 @@ func (s *Sqlite) updateUser(name string, r *bool, st *api.Status) error {
 	totalAffectedRows := tx.RowsAffected
 	if st != nil && totalAffectedRows == 1 {
 		db.UpdateColumn("LastStatusUpdateTime", time.Now())
-		
+
 		if err := db.Updates(updates).Error; err != nil {
 			return err
 		}
@@ -447,6 +450,8 @@ func (s *Sqlite) GetRules(character api.Character, role string, method api.Metho
 }
 
 func (s *Sqlite) insertRule(rule *Rule) error {
+	fmt.Println("------------------------------ rule")
+	fmt.Println(rule)
 	if err := s.Create(rule).Error; err != nil {
 		return err
 	}

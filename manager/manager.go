@@ -55,7 +55,7 @@ func (m *Manager) AuthorizeGetMethod(user *api.User, key *api.Key) error {
 		return err
 	}
 
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_Get)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_get)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (m *Manager) AuthorizeGetAllMethod(user *api.User, key *api.Key) error {
 		return err
 	}
 
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_GetAll)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_getAll)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (m *Manager) AuthorizePutMethod(user *api.User, key *api.Key) error {
 		return err
 	}
 
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_Put)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_put)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (m *Manager) AuthorizeDeleteMethod(user *api.User, key *api.Key) error {
 		return err
 	}
 
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_Delete)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_delete)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (m *Manager) AuthorizeDeleteAllMethod(user *api.User, key *api.Key) error {
 		return err
 	}
 
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_DeleteAll)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_deleteAll)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (m *Manager) AuthorizeWatchMethod(user *api.User, key *api.Key) error {
 		return err
 	}
 
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_Watch)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_watch)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (m *Manager) AuthorizeWatchMethod(user *api.User, key *api.Key) error {
 }
 
 func (m *Manager) AuthorizeSetUserStatusMethod(user *api.User, report *api.Report) error {
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_SetUserStatus)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_setUserStatus)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,8 @@ func (m *Manager) AuthorizeSetUserStatusMethod(user *api.User, report *api.Repor
 }
 
 func (m *Manager) AuthorizeGetActorsMethod(user *api.User) error {
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_GetActors)
+	fmt.Println(user)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_getActors)
 	if err != nil {
 		return err
 	}
@@ -199,7 +200,7 @@ func (m *Manager) AuthorizeGetActorsMethod(user *api.User) error {
 }
 
 func (m *Manager) AuthorizePutResultMethod(user *api.User) error {
-	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_PutResult)
+	keys, err := m.ruleStorage.GetRules(user.Character, user.Role, api.Method_putResult)
 	if err != nil {
 		return err
 	}

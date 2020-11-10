@@ -72,19 +72,29 @@ func newCharacter(dir string) (Character, error) {
 	}
 
 	character.Director = append(character.Director, Rule{
-		Key:     api.Key{},
-		Methods: []string{"GetActors", "PutResult"},
+		Key: api.Key{},
+		Methods: []string{
+			api.Method_name[int32(api.Method_getActors)],
+			api.Method_name[int32(api.Method_putResult)],
+			api.Method_name[int32(api.Method_ping)],
+		},
 	})
 
 	character.Operator = append(character.Operator, Rule{
-		Key:     api.Key{},
-		Methods: []string{"SetUserStatus"},
+		Key: api.Key{},
+		Methods: []string{
+			api.Method_name[int32(api.Method_setUserStatus)],
+			api.Method_name[int32(api.Method_ping)],
+		},
 	})
 
 	for i := range character.Actors {
 		character.Actors[i] = append(character.Actors[i], Rule{
-			Key:     api.Key{},
-			Methods: []string{"ImReady"},
+			Key: api.Key{},
+			Methods: []string{
+				api.Method_name[int32(api.Method_imReady)],
+				api.Method_name[int32(api.Method_ping)],
+			},
 		})
 	}
 

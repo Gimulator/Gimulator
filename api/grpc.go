@@ -38,8 +38,9 @@ func NewServer(manager *manager.Manager, sim *simulator.Simulator, mq mq.Message
 ///////////////////////////////////////////////////////
 ///////////////////////// MessageAPI Implementation ///
 ///////////////////////////////////////////////////////
+
 func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
-	log := s.log.WithField("key", key.String()).WithField("method", api.Method_Get)
+	log := s.log.WithField("key", key.String()).WithField("method", api.Method_get)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -74,7 +75,7 @@ func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 }
 
 func (s *Server) GetAll(key *api.Key, stream api.MessageAPI_GetAllServer) error {
-	log := s.log.WithField("key", key.String()).WithField("method", api.Method_GetAll)
+	log := s.log.WithField("key", key.String()).WithField("method", api.Method_getAll)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -119,7 +120,7 @@ func (s *Server) GetAll(key *api.Key, stream api.MessageAPI_GetAllServer) error 
 }
 
 func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, error) {
-	log := s.log.WithField("key", message.Key.String()).WithField("method", api.Method_Put)
+	log := s.log.WithField("key", message.Key.String()).WithField("method", api.Method_put)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -164,7 +165,7 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 }
 
 func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error) {
-	log := s.log.WithField("key", key.String()).WithField("method", api.Method_Delete)
+	log := s.log.WithField("key", key.String()).WithField("method", api.Method_delete)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -198,7 +199,7 @@ func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error)
 }
 
 func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, error) {
-	log := s.log.WithField("key", key.String()).WithField("method", api.Method_DeleteAll)
+	log := s.log.WithField("key", key.String()).WithField("method", api.Method_deleteAll)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -232,7 +233,7 @@ func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, err
 }
 
 func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
-	log := s.log.WithField("key", key.String()).WithField("method", api.Method_Watch)
+	log := s.log.WithField("key", key.String()).WithField("method", api.Method_watch)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -282,7 +283,7 @@ func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
 ///////////////////////////////////////////////////////
 
 func (s *Server) SetUserStatus(ctx context.Context, report *api.Report) (*empty.Empty, error) {
-	log := s.log.WithField("asked-name", report.Name).WithField("status", report.Status).WithField("method", api.Method_SetUserStatus)
+	log := s.log.WithField("asked-name", report.Name).WithField("status", report.Status).WithField("method", api.Method_setUserStatus)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -319,7 +320,7 @@ func (s *Server) SetUserStatus(ctx context.Context, report *api.Report) (*empty.
 ///////////////////////////////////////////////////////
 
 func (s *Server) GetActors(empty *empty.Empty, stream api.DirectorAPI_GetActorsServer) error {
-	log := s.log.WithField("method", api.Method_GetActors)
+	log := s.log.WithField("method", api.Method_getActors)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -363,7 +364,7 @@ func (s *Server) GetActors(empty *empty.Empty, stream api.DirectorAPI_GetActorsS
 }
 
 func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empty, error) {
-	log := s.log.WithField("method", api.Method_PutResult)
+	log := s.log.WithField("method", api.Method_putResult)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -397,11 +398,11 @@ func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empt
 }
 
 ///////////////////////////////////////////////////////
-/////////////////////////// UserAPI Implementation ///
+//////////////////////////// UserAPI Implementation ///
 ///////////////////////////////////////////////////////
 
 func (s *Server) ImReady(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
-	log := s.log.WithField("method", api.Method_ImReady)
+	log := s.log.WithField("method", api.Method_imReady)
 	log.Info("starting to handle incoming request")
 
 	log.Info("starting to extract token from context")
@@ -434,6 +435,17 @@ func (s *Server) ImReady(ctx context.Context, emp *empty.Empty) (*empty.Empty, e
 	return &empty.Empty{}, nil
 }
 
+func (s *Server) Ping(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
+	log := s.log.WithField("method", api.Method_ping)
+	log.Info("starting to handle incoming request")
+
+	return &empty.Empty{}, nil
+}
+
+///////////////////////////////////////////////////////
+//////////////////////////////////////////// Helper ///
+///////////////////////////////////////////////////////
+
 func (s *Server) extractTokenFromContext(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -447,9 +459,3 @@ func (s *Server) extractTokenFromContext(ctx context.Context) (string, error) {
 
 	return tokens[0], nil
 }
-
-func (s *Server) Ping(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
-	s.log.Info("Pinging ...")
-	return &empty.Empty{}, nil
-}
-
