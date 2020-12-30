@@ -16,9 +16,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func ExitGracefully() {
-	// It just waits for 5 seconds (for now...)
-	time.Sleep(5 * time.Second)
+func FinalizeGame() {
+	log.Info("starting to process incoming request")
+	while true {
+		err := s.mq.Send(result)
+		if err == nil {
+			break
+		}
+		log.WithError(err).Error("could not process incoming request")
+		time.Sleep(5 * time.Second)
+	}
+
+	// TODO Close the gRPC server gracefully
+
+	// Shutdown Gimulator
 	os.Exit(0)
 }
 
@@ -396,13 +407,7 @@ func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empt
 		return nil, err
 	}
 
-	log.Info("starting to process incoming request")
-	if err := s.mq.Send(result); err != nil {
-		log.WithError(err).Error("could not process incoming request")
-		return nil, err
-	}
-
-	go ExitGracefully()
+	go FinalizeGame()
 
 	return &empty.Empty{}, nil
 }
