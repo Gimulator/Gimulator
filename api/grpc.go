@@ -37,8 +37,7 @@ func NewServer(manager *manager.Manager, sim *simulator.Simulator, mq mq.Message
 	}, nil
 }
 
-
-func (s *Server) FinalizeGame() {
+func (s *Server) FinalizeGame(result *api.Result) {
 	s.log.Info("starting to process incoming request")
 	for {
 		err := s.mq.Send(result)
@@ -408,7 +407,7 @@ func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empt
 		return nil, err
 	}
 
-	go s.FinalizeGame()
+	go s.FinalizeGame(result)
 
 	return &empty.Empty{}, nil
 }
