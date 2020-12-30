@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"os"
+	"time"
 
 	"github.com/Gimulator/Gimulator/manager"
 	"github.com/Gimulator/Gimulator/mq"
@@ -13,6 +15,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+func ExitGracefully() {
+	// It just waits for 5 seconds (for now...)
+	time.Sleep(5 * time.Second)
+	os.Exit(0)
+}
 
 type Server struct {
 	api.UnimplementedMessageAPIServer
@@ -393,6 +401,8 @@ func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empt
 		log.WithError(err).Error("could not process incoming request")
 		return nil, err
 	}
+
+	go ExitGracefully()
 
 	return &empty.Empty{}, nil
 }
