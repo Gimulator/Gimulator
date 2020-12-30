@@ -16,23 +16,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func FinalizeGame() {
-	log.Info("starting to process incoming request")
-	for {
-		err := s.mq.Send(result)
-		if err == nil {
-			break
-		}
-		log.WithError(err).Error("could not process incoming request")
-		time.Sleep(5 * time.Second)
-	}
-
-	// TODO Close the gRPC server gracefully
-
-	// Shutdown Gimulator
-	os.Exit(0)
-}
-
 type Server struct {
 	api.UnimplementedMessageAPIServer
 	api.UnimplementedOperatorAPIServer
@@ -52,6 +35,24 @@ func NewServer(manager *manager.Manager, sim *simulator.Simulator, mq mq.Message
 		simulator: sim,
 		log:       logrus.WithField("component", "grpc"),
 	}, nil
+}
+
+
+func (s *Server) FinalizeGame() {
+	log.Info("starting to process incoming request")
+	for {
+		err := s.mq.Send(result)
+		if err == nil {
+			break
+		}
+		log.WithError(err).Error("could not process incoming request")
+		time.Sleep(5 * time.Second)
+	}
+
+	// TODO Close the gRPC server gracefully
+
+	// Shutdown Gimulator
+	os.Exit(0)
 }
 
 ///////////////////////////////////////////////////////
