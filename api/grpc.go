@@ -18,7 +18,7 @@ import (
 
 func FinalizeGame() {
 	log.Info("starting to process incoming request")
-	while true {
+	for {
 		err := s.mq.Send(result)
 		if err == nil {
 			break
