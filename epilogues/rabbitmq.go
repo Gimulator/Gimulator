@@ -1,4 +1,4 @@
-package mq
+package epilogues
 
 import (
 	"encoding/json"
@@ -9,19 +9,19 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type Rabbit struct {
+type RabbitMQ struct {
 	uri   string
 	queue string
 	log   *logrus.Entry
 	ch    *amqp.Channel
 }
 
-func NewRabbit(host, username, password, queueName string) (*Rabbit, error) {
+func NewRabbitMQ(host, username, password, queueName string) (*RabbitMQ, error) {
 	uri := fmt.Sprintf("amqps://%v:%v@%v:5671", username, password, host)
-	r := &Rabbit{
+	r := &RabbitMQ{
 		uri:   uri,
 		queue: queueName,
-		log:   logrus.WithField("component", "rabbit"),
+		log:   logrus.WithField("component", "rabbitmq"),
 	}
 
 	conn, err := amqp.Dial(r.uri)
@@ -38,12 +38,11 @@ func NewRabbit(host, username, password, queueName string) (*Rabbit, error) {
 	return r, nil
 }
 
-func (r *Rabbit) test() error {
-
-	return nil
+func (r *RabbitMQ) Test() error {
+	return nil  // TODO
 }
 
-func (r *Rabbit) Send(result *api.Result) error {
+func (r *RabbitMQ) Write(result *api.Result) error {
 	r.log.Info("starting to send result")
 
 	r.log.Info("starting to marshal result")
