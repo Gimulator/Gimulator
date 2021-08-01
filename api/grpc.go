@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Gimulator/Gimulator/manager"
-	"github.com/Gimulator/Gimulator/mq"
+	"github.com/Gimulator/Gimulator/epilogues"
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -22,15 +22,15 @@ type Server struct {
 	api.UnimplementedDirectorAPIServer
 	api.UnimplementedUserAPIServer
 
-	mq        mq.MessageQueue
+	epilogue  epilogues.Epilogue
 	manager   *manager.Manager
 	simulator *simulator.Simulator
 	log       *logrus.Entry
 }
 
-func NewServer(manager *manager.Manager, sim *simulator.Simulator, mq mq.MessageQueue) (*Server, error) {
+func NewServer(manager *manager.Manager, sim *simulator.Simulator, epilogue epilogues.Epilogue) (*Server, error) {
 	return &Server{
-		mq:        mq,
+		epilogue:  epilogue,
 		manager:   manager,
 		simulator: sim,
 		log:       logrus.WithField("component", "grpc"),
@@ -40,11 +40,11 @@ func NewServer(manager *manager.Manager, sim *simulator.Simulator, mq mq.Message
 func (s *Server) FinalizeGame(result *api.Result) {
 	s.log.Info("starting to process incoming request")
 	for {
-		err := s.mq.Send(result)
+		err := s.epilogue.Write(result)
 		if err == nil {
 			break
 		}
-		s.log.WithError(err).Error("could not process incoming request")
+		s.log.WithError(err).Error("could not write result into epilogue")
 		time.Sleep(5 * time.Second)
 	}
 
