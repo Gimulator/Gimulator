@@ -12,9 +12,6 @@ GOFILES := $(shell find $(GOBASE) -type f -name "*.go")
 GOMAIN := $(GOBASE)/cmd/gimulator/main.go
 BINDIR := $(GOBASE)/bin
 
-# Use linker flags to provide version/build settings
-LDFLAGS=-ldflags '-X=main.Version=$(VERSION) -X=main.Build=$(COMMIT) -extldflags="-static"'
-
 # Make is verbose in Linux. Make it silent.
 MAKEFLAGS += --silent
 
@@ -44,7 +41,7 @@ clean:
 build:
 	@echo ">>>  Building binary..."
 	mkdir -p $(BINDIR) 2> /dev/null
-	go build $(LDFLAGS) -o $(BINDIR)/$(PROJECTNAME) $(GOMAIN)
+	go build -o $(BINDIR)/$(PROJECTNAME) $(GOMAIN)
 
 run:
 	@echo ">>>  Running..."
