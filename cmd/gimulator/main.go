@@ -9,8 +9,8 @@ import (
 	"github.com/Gimulator/Gimulator/api"
 	"github.com/Gimulator/Gimulator/cmd"
 	"github.com/Gimulator/Gimulator/config"
-	"github.com/Gimulator/Gimulator/manager"
 	"github.com/Gimulator/Gimulator/epilogues"
+	"github.com/Gimulator/Gimulator/manager"
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/Gimulator/Gimulator/storage"
 	proto "github.com/Gimulator/protobuf/go/api"
@@ -68,13 +68,6 @@ func main() {
 		panic(err)
 	}
 
-	log.Info("starting to setup manager")
-	manager, err := manager.NewManager(sqlite, sqlite)
-	if err != nil {
-		log.WithError(err).Fatal("could not setup manager")
-		panic(err)
-	}
-
 	var epilogue epilogues.Epilogue
 
 	switch cmd.EpilogueType {
@@ -85,7 +78,7 @@ func main() {
 			panic(err)
 		}
 	case "rabbitmq":
-		log.Info("starting to setup rabbit")  // FIXME optionalize
+		log.Info("starting to setup rabbit") // FIXME optionalize
 		epilogue, err = epilogues.NewRabbitMQ(cmd.RabbitHost, cmd.RabbitUsername, cmd.RabbitPassword, cmd.RabbitQueue)
 		if err != nil {
 			log.WithError(err).Fatal("could not setup rabbit")
@@ -93,8 +86,15 @@ func main() {
 		}
 	}
 
+	log.Info("starting to setup manager")
+	manager, err := manager.NewManager(sqlite, sqlite, epilogue)
+	if err != nil {
+		log.WithError(err).Fatal("could not setup manager")
+		panic(err)
+	}
+
 	log.Info("starting to setup server")
-	server, err := api.NewServer(manager, simulator, epilogue)
+	server, err := api.NewServer(manager, simulator)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup server")
 		panic(err)

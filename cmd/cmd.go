@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	EpilogueType   = "console"
+	EpilogueType = "console"
 
 	RabbitHost     = ""
 	RabbitUsername = ""
@@ -14,6 +14,7 @@ var (
 	RabbitQueue    = ""
 	ConfigDir      = ""
 	Host           = ""
+	Id             = ""
 )
 
 func ParseFlags() {
@@ -25,6 +26,7 @@ func ParseFlags() {
 	flag.StringVar(&RabbitQueue, "rabbit-result-queue", "", "the queue of rabbitMQ where Gimulator will use to send the result of room")
 	flag.StringVar(&ConfigDir, "config-dir", "", "the direction of the Gimulator's configuration, this directory should contain two rules.yaml and credentials.yaml files")
 	flag.StringVar(&Host, "host", "", "the host of Gimulator, where Gimulator listens on")
+	flag.StringVar(&Id, "id", "", "the id of Gimulator, which distinguishes each gimulator instance from others")
 	flag.Parse()
 
 	if EpilogueType == "" {
@@ -50,8 +52,11 @@ func ParseFlags() {
 	if Host == "" {
 		Host = os.Getenv("GIMULATOR_HOST")
 	}
+	if Id == "" {
+		Id = os.Getenv("GIMULATOR_ID")
+	}
 
-	if (EpilogueType == "rabbitmq") && (RabbitHost == "" || RabbitUsername == "" || RabbitPassword == "" || RabbitQueue == "" || ConfigDir == "" || Host == "") {
+	if ((EpilogueType == "rabbitmq") && (RabbitHost == "" || RabbitUsername == "" || RabbitPassword == "" || RabbitQueue == "")) || ConfigDir == "" || Host == "" || Id == "" {
 		println("Please set the needed flags.")
 		flag.PrintDefaults()
 		os.Exit(1)
