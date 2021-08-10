@@ -37,7 +37,7 @@ func NewServer(manager *manager.Manager, sim *simulator.Simulator) (*Server, err
 func (s *Server) FinalizeGame(result *api.Result) {
 	s.log.Info("starting to process incoming request")
 	for {
-		err := s.manager.epilogue.Write(result)
+		err := s.manager.Epilogue.Write(result)
 		if err == nil {
 			break
 		}

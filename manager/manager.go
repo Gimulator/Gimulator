@@ -16,14 +16,14 @@ type Manager struct {
 	userStorage storage.UserStorage
 	ruleStorage storage.RuleStorage
 
-	epilogue  epilogues.Epilogue
+	Epilogue epilogues.Epilogue
 }
 
 func NewManager(credStorage storage.UserStorage, roleStorage storage.RuleStorage, epilogue epilogues.Epilogue) (*Manager, error) {
 	return &Manager{
 		userStorage: credStorage,
 		ruleStorage: roleStorage,
-		epilogue:  epilogue,
+		Epilogue:    epilogue,
 	}, nil
 }
 
@@ -37,7 +37,7 @@ func (m *Manager) Authenticate(token string) (*api.User, error) {
 
 func (m *Manager) UpdateStatus(name string, status api.Status) error {
 	err := m.userStorage.UpdateUserStatus(name, status)
-	
+
 	// Checking if director has failed
 	if status == api.Status_failed {
 		_user, err2 := m.GetUserWithName(name)
@@ -46,14 +46,14 @@ func (m *Manager) UpdateStatus(name string, status api.Status) error {
 		}
 		if _user.GetCharacter() == api.Character_director {
 			// Director has failed, so Gimulator must be terminated.
-			
+
 			// Sending report to message queue
 			result := api.Result{
-				Id:		cmd.Id,
-				Msg:	"Director Failed.",
-				Status:	api.Result_failed,
+				Id:     cmd.Id,
+				Msg:    "Director Failed.",
+				Status: api.Result_failed,
 			}
-			err3 := m.epilogue.Write(&result)
+			err3 := m.Epilogue.Write(&result)
 			if err3 != nil {
 				return err3
 			}
