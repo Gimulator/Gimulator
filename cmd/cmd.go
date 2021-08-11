@@ -29,8 +29,10 @@ func ParseFlags() {
 	flag.StringVar(&Id, "id", "", "the id of Gimulator, which distinguishes each gimulator instance from others")
 	flag.Parse()
 
-	if EpilogueType = os.Getenv("GIMULATOR_EPILOGUE_TYPE"); EpilogueType == "" {
-		EpilogueType = "console"
+	if EpilogueType == "" {
+		if EpilogueType = os.Getenv("GIMULATOR_EPILOGUE_TYPE"); EpilogueType == "" {
+			EpilogueType = "console"
+		}
 	}
 
 	if RabbitHost == "" {
