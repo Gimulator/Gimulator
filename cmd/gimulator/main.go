@@ -9,8 +9,8 @@ import (
 	"github.com/Gimulator/Gimulator/api"
 	"github.com/Gimulator/Gimulator/cmd"
 	"github.com/Gimulator/Gimulator/config"
-	"github.com/Gimulator/Gimulator/manager"
 	"github.com/Gimulator/Gimulator/epilogues"
+	"github.com/Gimulator/Gimulator/manager"
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/Gimulator/Gimulator/storage"
 	proto "github.com/Gimulator/protobuf/go/api"
@@ -86,7 +86,7 @@ func main() {
 			panic(err)
 		}
 	case "rabbitmq":
-		log.Info("starting to setup rabbit")  // FIXME optionalize
+		log.Info("starting to setup rabbit") // FIXME optionalize
 		epilogue, err = epilogues.NewRabbitMQ(cmd.RabbitHost, cmd.RabbitUsername, cmd.RabbitPassword, cmd.RabbitQueue)
 		if err != nil {
 			log.WithError(err).Fatal("could not setup rabbit")
