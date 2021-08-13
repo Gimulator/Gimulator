@@ -3,7 +3,6 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/Gimulator/Gimulator/config"
@@ -48,14 +47,14 @@ func (s *Sqlite) prepare(path string, config *config.Config) error {
 	s.log.Info("starting to setup sqlite")
 
 	s.log.WithField("path", path).Info("starting to create sqlite file")
-	if path != memoryPath {
-		file, err := os.Create(path)
-		if err != nil {
-			s.log.WithField("path", path).WithError(err).Error("could not create sqlite file")
-			return err
-		}
-		defer file.Close()
-	}
+	// if path != memoryPath {
+	// 	file, err := os.Create(path)
+	// 	if err != nil {
+	// 		s.log.WithField("path", path).WithError(err).Error("could not create sqlite file")
+	// 		return err
+	// 	}
+	// 	defer file.Close()
+	// }
 
 	s.log.Info("starting to open sqlite db")
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})

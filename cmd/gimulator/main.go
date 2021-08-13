@@ -55,7 +55,8 @@ func main() {
 	}
 
 	log.Info("starting to setup sqlite")
-	sqlite, err := storage.NewSqlite(":memory:", config)
+	// Using In-Memory Database with Shared Cache (Instad of private cache)
+	sqlite, err := storage.NewSqlite("file::memory:?cache=shared", config)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup sqlite")
 		panic(err)
