@@ -3,10 +3,11 @@ package cmd
 import (
 	"flag"
 	"os"
+	"fmt"
 )
 
 var (
-	EpilogueType = ""
+	EpilogueType   = ""
 
 	RabbitHost     = ""
 	RabbitUsername = ""
@@ -30,6 +31,7 @@ func ParseFlags() {
 	flag.Parse()
 
 	if EpilogueType == "" {
+		fmt.Println(os.Getenv("GIMULATOR_EPILOGUE_TYPE"))
 		if EpilogueType = os.Getenv("GIMULATOR_EPILOGUE_TYPE"); EpilogueType == "" {
 			EpilogueType = "console"
 		}
