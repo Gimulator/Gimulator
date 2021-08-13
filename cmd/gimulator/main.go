@@ -69,13 +69,6 @@ func main() {
 		panic(err)
 	}
 
-	log.Info("starting to setup manager")
-	manager, err := manager.NewManager(sqlite, sqlite)
-	if err != nil {
-		log.WithError(err).Fatal("could not setup manager")
-		panic(err)
-	}
-
 	var epilogue epilogues.Epilogue
 
 	switch cmd.EpilogueType {
@@ -94,8 +87,15 @@ func main() {
 		}
 	}
 
+	log.Info("starting to setup manager")
+	manager, err := manager.NewManager(sqlite, sqlite, epilogue)
+	if err != nil {
+		log.WithError(err).Fatal("could not setup manager")
+		panic(err)
+	}
+
 	log.Info("starting to setup server")
-	server, err := api.NewServer(manager, simulator, epilogue)
+	server, err := api.NewServer(manager, simulator)
 	if err != nil {
 		log.WithError(err).Fatal("could not setup server")
 		panic(err)

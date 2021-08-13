@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Gimulator/Gimulator/manager"
-	"github.com/Gimulator/Gimulator/epilogues"
 	"github.com/Gimulator/Gimulator/simulator"
 	"github.com/Gimulator/protobuf/go/api"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -22,15 +21,13 @@ type Server struct {
 	api.UnimplementedDirectorAPIServer
 	api.UnimplementedUserAPIServer
 
-	epilogue  epilogues.Epilogue
 	manager   *manager.Manager
 	simulator *simulator.Simulator
 	log       *logrus.Entry
 }
 
-func NewServer(manager *manager.Manager, sim *simulator.Simulator, epilogue epilogues.Epilogue) (*Server, error) {
+func NewServer(manager *manager.Manager, sim *simulator.Simulator) (*Server, error) {
 	return &Server{
-		epilogue:  epilogue,
 		manager:   manager,
 		simulator: sim,
 		log:       logrus.WithField("component", "grpc"),
@@ -40,7 +37,7 @@ func NewServer(manager *manager.Manager, sim *simulator.Simulator, epilogue epil
 func (s *Server) FinalizeGame(result *api.Result) {
 	s.log.Info("starting to process incoming request")
 	for {
-		err := s.epilogue.Write(result)
+		err := s.manager.Epilogue.Write(result)
 		if err == nil {
 			break
 		}
