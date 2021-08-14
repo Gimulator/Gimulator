@@ -19,7 +19,7 @@ var (
 )
 
 func ParseFlags() {
-	flag.StringVar(&EpilogueType, "epilogue-type", "console", "The epilogue component which Gimulator will write the result to it. Choices are: console, rabbitmq. Note: If you choose rabbitmq, you need to set the corresponding flags too.")
+	flag.StringVar(&EpilogueType, "epilogue-type", "", "The epilogue component which Gimulator will write the result to it. Choices are: console, rabbitmq. Note: If you choose rabbitmq, you need to set the corresponding flags too.")
 
 	flag.StringVar(&RabbitHost, "rabbit-url", "", "the host of rabbitMQ, Gimulator will use this address to connect to rabbitMQ for sending the result of the room")
 	flag.StringVar(&RabbitUsername, "rabbit-username", "", "the username of rabbitMQ, Gimulator will use this username to connect to rabbitMQ for sending the result of the room")
@@ -30,10 +30,6 @@ func ParseFlags() {
 	flag.StringVar(&Id, "id", "", "the id of Gimulator, which distinguishes each gimulator instance from others")
 	flag.Parse()
 
-	fmt.Println("cmd debug log start")
-	fmt.Println(os.Getenv("GIMULATOR_EPILOGUE_TYPE"))
-	fmt.Println(EpilogueType)
-	fmt.Println("cmd debug log end")
 	if EpilogueType == "" {
 		if EpilogueType = os.Getenv("GIMULATOR_EPILOGUE_TYPE"); EpilogueType == "" {
 			EpilogueType = "console"
