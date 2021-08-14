@@ -1,5 +1,5 @@
-#FROM golang:alpine as builder
-FROM xushikuan/alpine-build:2.0 AS builder
+FROM golang:alpine as builder
+# FROM xushikuan/alpine-build:2.0 AS builder
 
 ENV GO111MODULE=on 
 ENV GOOS=linux
