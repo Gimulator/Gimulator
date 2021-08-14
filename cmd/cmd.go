@@ -30,8 +30,11 @@ func ParseFlags() {
 	flag.StringVar(&Id, "id", "", "the id of Gimulator, which distinguishes each gimulator instance from others")
 	flag.Parse()
 
+	fmt.Println("cmd debug log start")
+	fmt.Println(os.Getenv("GIMULATOR_EPILOGUE_TYPE"))
+	fmt.Println(EpilogueType)
+	fmt.Println("cmd debug log end")
 	if EpilogueType == "" {
-		fmt.Println(os.Getenv("GIMULATOR_EPILOGUE_TYPE"))
 		if EpilogueType = os.Getenv("GIMULATOR_EPILOGUE_TYPE"); EpilogueType == "" {
 			EpilogueType = "console"
 		}
