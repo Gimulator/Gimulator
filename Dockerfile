@@ -1,4 +1,4 @@
-FROM golang:alpine as builder
+FROM golang:buster as builder
 # FROM xushikuan/alpine-build:2.0 AS builder
 
 ENV GO111MODULE=on 
