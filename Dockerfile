@@ -1,23 +1,17 @@
-FROM golang:buster as builder
-# FROM xushikuan/alpine-build:2.0 AS builder
+FROM golang:alpine as builder
 
-ENV GO111MODULE=on 
-ENV GOOS=linux
-ENV GOARCH=amd64
-#ENV CGO_ENABLED=1
+ENV GO111MODULE=on GOOS=linux GOARCH=amd64
 
 WORKDIR /build
 
-COPY go.mod .
-COPY go.sum .
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
 RUN go build -a -ldflags "-linkmode external -extldflags '-static' -s -w" -o gimulator cmd/gimulator/main.go
 
-# FROM alpine
-FROM busybox:glibc
+FROM alpine
 
 WORKDIR /app
 
