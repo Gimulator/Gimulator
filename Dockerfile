@@ -2,6 +2,8 @@ FROM golang:alpine as builder
 
 ENV GO111MODULE=on GOOS=linux GOARCH=amd64
 
+RUN apk add g++
+
 WORKDIR /build
 
 COPY go.mod go.sum ./
