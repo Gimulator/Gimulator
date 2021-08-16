@@ -16,7 +16,8 @@ COPY . .
 
 RUN go build -a -ldflags "-linkmode external -extldflags '-static' -s -w" -o gimulator cmd/gimulator/main.go
 
-FROM alpine
+# FROM alpine
+FROM busybox:glibc
 
 WORKDIR /app
 
