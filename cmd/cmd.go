@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	EpilogueType = ""
+	EpilogueType   = ""
 
 	RabbitHost     = ""
 	RabbitUsername = ""
@@ -18,7 +18,7 @@ var (
 )
 
 func ParseFlags() {
-	flag.StringVar(&EpilogueType, "epilogue-type", "console", "The epilogue component which Gimulator will write the result to it. Choices are: console, rabbitmq. Note: If you choose rabbitmq, you need to set the corresponding flags too.")
+	flag.StringVar(&EpilogueType, "epilogue-type", "", "The epilogue component which Gimulator will write the result to it. Choices are: console, rabbitmq. Note: If you choose rabbitmq, you need to set the corresponding flags too.")
 
 	flag.StringVar(&RabbitHost, "rabbit-url", "", "the host of rabbitMQ, Gimulator will use this address to connect to rabbitMQ for sending the result of the room")
 	flag.StringVar(&RabbitUsername, "rabbit-username", "", "the username of rabbitMQ, Gimulator will use this username to connect to rabbitMQ for sending the result of the room")

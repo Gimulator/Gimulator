@@ -50,71 +50,74 @@ func main() {
 	log.WithField("config-dir", cmd.ConfigDir).Info("starting to setup configs")
 	config, err := config.NewConfig(cmd.ConfigDir)
 	if err != nil {
-		log.WithField("config-dir", cmd.ConfigDir).WithError(err).Fatal("could not setup configs")
+		log.WithField("config-dir", cmd.ConfigDir).WithError(err).Fatal("Could not setup configs")
 		panic(err)
 	}
 
-	log.Info("starting to setup sqlite")
-	sqlite, err := storage.NewSqlite(":memory:", config)
+	log.Info("Starting to setup sqlite")
+	// Using In-Memory Database with Shared Cache (Instad of private cache)
+	sqlite, err := storage.NewSqlite("file::memory:?cache=shared", config)
 	if err != nil {
-		log.WithError(err).Fatal("could not setup sqlite")
+		log.WithError(err).Fatal("Could not setup sqlite")
 		panic(err)
 	}
 
-	log.Info("starting to setup simulator")
+	log.Info("Starting to setup simulator")
 	simulator, err := simulator.NewSimulator(sqlite)
 	if err != nil {
-		log.WithError(err).Fatal("could not setup simulator")
+		log.WithError(err).Fatal("Could not setup simulator")
 		panic(err)
 	}
 
 	var epilogue epilogues.Epilogue
 
+	log.WithField("epilogue-type", cmd.EpilogueType).Info("Starting to setup epilogue")
 	switch cmd.EpilogueType {
 	case "console":
 		epilogue, err = epilogues.NewConsole()
+		log.Info("Epilogue console is initialized")
 		if err != nil {
-			log.WithError(err).Fatal("could not setup console")
+			log.WithError(err).Fatal("Could not setup console")
 			panic(err)
 		}
 	case "rabbitmq":
-		log.Info("starting to setup rabbit") // FIXME optionalize
 		epilogue, err = epilogues.NewRabbitMQ(cmd.RabbitHost, cmd.RabbitUsername, cmd.RabbitPassword, cmd.RabbitQueue)
+		log.Info("Epilogue RabbitMQ is initialized")
 		if err != nil {
-			log.WithError(err).Fatal("could not setup rabbit")
+			log.WithError(err).Fatal("Could not setup rabbit")
 			panic(err)
 		}
 	}
 
-	log.Info("starting to setup manager")
+	log.Info("Starting to setup manager")
 	manager, err := manager.NewManager(sqlite, sqlite, epilogue)
 	if err != nil {
-		log.WithError(err).Fatal("could not setup manager")
+		log.WithError(err).Fatal("Could not setup manager")
 		panic(err)
 	}
 
-	log.Info("starting to setup server")
+	log.Info("Starting to setup server")
 	server, err := api.NewServer(manager, simulator)
 	if err != nil {
-		log.WithError(err).Fatal("could not setup server")
+		log.WithError(err).Fatal("Could not setup server")
 		panic(err)
 	}
 
-	log.WithField("host", cmd.Host).Info("starting to setup listener")
+	log.WithField("host", cmd.Host).Info("Starting to setup listener")
 	listener, err := net.Listen("tcp", cmd.Host)
 	if err != nil {
-		log.WithError(err).Fatal("could not setup listener")
+		log.WithError(err).Fatal("Could not setup listener")
 		panic(err)
 	}
 
-	log.Info("starting to serve")
+	log.Info("Starting to serve")
 	s := grpc.NewServer()
 	proto.RegisterMessageAPIServer(s, server)
 	proto.RegisterOperatorAPIServer(s, server)
 	proto.RegisterDirectorAPIServer(s, server)
 	proto.RegisterUserAPIServer(s, server)
 	if err := s.Serve(listener); err != nil {
-		log.WithError(err).Fatal("could not serve")
+		log.WithError(err).Fatal("Could not serve")
 		panic(err)
 	}
 }
