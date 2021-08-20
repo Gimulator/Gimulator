@@ -3,7 +3,7 @@ module github.com/Gimulator/Gimulator
 go 1.16
 
 require (
-	github.com/Gimulator/protobuf v0.0.0-20201112132511-27f3ca365f68
+	github.com/Gimulator/protobuf v0.0.0-20201110144626-03d650140d3c
 	github.com/golang/protobuf v1.5.2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/streadway/amqp v1.0.0
