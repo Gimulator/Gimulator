@@ -14,7 +14,7 @@ jobs:
         go-version: 1.16
 
     - name: Build
-      run: go build -v -o ./bin/gimulator ./cmd/gimulator/main.go
+      run: go build -ldflags "-extldflags '-O3' -s -w" -o ./bin/gimulator ./cmd/gimulator/main.go
 
     - name: Test
       run: go test -v ./...
