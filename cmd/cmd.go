@@ -40,7 +40,7 @@ func ParseFlags() {
 
 	if LogLevel == "" {
 		if LogLevel = os.Getenv("GIMULATOR_LOG_LEVEL"); LogLevel == "" {
-			LogLevel = "INFO"
+			LogLevel = "DEBUG"
 		}
 	}
 	LogLevel = strings.ToUpper(LogLevel)
