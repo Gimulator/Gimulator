@@ -3,10 +3,12 @@ package cmd
 import (
 	"flag"
 	"os"
+	"strings"
 )
 
 var (
-	EpilogueType   = ""
+	EpilogueType = ""
+	LogLevel     = ""
 
 	RabbitHost     = ""
 	RabbitUsername = ""
@@ -19,6 +21,7 @@ var (
 
 func ParseFlags() {
 	flag.StringVar(&EpilogueType, "epilogue-type", "", "The epilogue component which Gimulator will write the result to it. Choices are: console, rabbitmq. Note: If you choose rabbitmq, you need to set the corresponding flags too.")
+	flag.StringVar(&LogLevel, "log-level", "", "Logging severity. Choose from TRACE, DEBUG, INFO, WARN, ERROR, FATAL and PANIC")
 
 	flag.StringVar(&RabbitHost, "rabbit-url", "", "the host of rabbitMQ, Gimulator will use this address to connect to rabbitMQ for sending the result of the room")
 	flag.StringVar(&RabbitUsername, "rabbit-username", "", "the username of rabbitMQ, Gimulator will use this username to connect to rabbitMQ for sending the result of the room")
@@ -34,6 +37,11 @@ func ParseFlags() {
 			EpilogueType = "console"
 		}
 	}
+
+	if LogLevel == "" {
+		LogLevel = os.Getenv("GIMULATOR_LOG_LEVEL")
+	}
+	LogLevel = strings.ToUpper(LogLevel)
 
 	if RabbitHost == "" {
 		RabbitHost = os.Getenv("GIMULATOR_RABBIT_HOST")

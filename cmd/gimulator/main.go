@@ -28,7 +28,6 @@ func sort(str []string) {
 func init() {
 	cmd.ParseFlags()
 
-	logrus.SetLevel(logrus.DebugLevel)
 	logrus.SetReportCaller(true)
 
 	formatter := &logrus.TextFormatter{
@@ -42,6 +41,27 @@ func init() {
 		},
 	}
 	logrus.SetFormatter(formatter)
+
+	switch cmd.LogLevel {
+	case "TRACE":
+		logrus.SetLevel(logrus.TraceLevel)
+	case "DEBUG":
+		logrus.SetLevel(logrus.DebugLevel)
+	case "INFO":
+		logrus.SetLevel(logrus.InfoLevel)
+	case "WARN":
+		logrus.SetLevel(logrus.WarnLevel)
+	case "ERROR":
+		logrus.SetLevel(logrus.ErrorLevel)
+	case "FATAL":
+		logrus.SetLevel(logrus.FatalLevel)
+	case "PANIC":
+		logrus.SetLevel(logrus.PanicLevel)
+	default:
+		logrus.SetLevel(logrus.DebugLevel)
+		logrus.WithField("log-level", cmd.LogLevel).Warn(fmt.Sprintf("Invalid log level. Logger will proceed with %s log level", logrus.GetLevel()))
+	}
+
 }
 
 func main() {
