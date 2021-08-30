@@ -1,6 +1,6 @@
 module github.com/Gimulator/Gimulator
 
-go 1.16
+go 1.17
 
 require (
 	github.com/Gimulator/protobuf v0.0.0-20201110144626-03d650140d3c
@@ -12,4 +12,14 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/sqlite v1.1.4
 	gorm.io/gorm v1.21.12
+)
+
+require (
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.2 // indirect
+	github.com/mattn/go-sqlite3 v1.14.5 // indirect
+	golang.org/x/net v0.0.0-20200822124328-c89045814202 // indirect
+	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd // indirect
+	golang.org/x/text v0.3.0 // indirect
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 )
