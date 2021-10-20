@@ -35,7 +35,7 @@ func NewServer(manager *manager.Manager, sim *simulator.Simulator) (*Server, err
 }
 
 func (s *Server) FinalizeGame(result *api.Result) {
-	s.log.Info("starting to process incoming request")
+	s.log.Debug("starting to process incoming request")
 	for {
 		err := s.manager.Epilogue.Write(result)
 		if err == nil {
@@ -57,16 +57,16 @@ func (s *Server) FinalizeGame(result *api.Result) {
 
 func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_get)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
 		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -74,13 +74,13 @@ func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizeGetMethod(user, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	message, err := s.simulator.Get(key)
 	if err != nil {
 		log.WithError(err).Error("could not process incoming request")
@@ -92,9 +92,9 @@ func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 
 func (s *Server) GetAll(key *api.Key, stream api.MessageAPI_GetAllServer) error {
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_getAll)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	ctx := stream.Context()
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *Server) GetAll(key *api.Key, stream api.MessageAPI_GetAllServer) error 
 		return err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -111,20 +111,20 @@ func (s *Server) GetAll(key *api.Key, stream api.MessageAPI_GetAllServer) error 
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizeGetAllMethod(user, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return err
 	}
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	messages, err := s.simulator.GetAll(key)
 	if err != nil {
 		log.WithError(err).Error("could not process incoming request")
 		return err
 	}
 
-	log.Info("starting to send messages")
+	log.Debug("starting to send messages")
 	for _, mes := range messages {
 		if err := stream.Send(mes); err != nil {
 			log.WithError(err).Error("could not send message")
@@ -137,16 +137,16 @@ func (s *Server) GetAll(key *api.Key, stream api.MessageAPI_GetAllServer) error 
 
 func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, error) {
 	log := s.log.WithField("key", message.Key.String()).WithField("method", api.Method_put)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
 		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -154,13 +154,13 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizePutMethod(user, message.Key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
-	log.Info("starting to setup the meta of the message")
+	log.Debug("starting to setup the meta of the message")
 	message.Meta = &api.Meta{
 		Owner: &api.User{
 			Name:      user.Name,
@@ -171,7 +171,7 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 		},
 	}
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	if err := s.simulator.Put(message); err != nil {
 		log.WithError(err).Error("could not process incoming request")
 		return nil, err
@@ -182,16 +182,16 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 
 func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error) {
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_delete)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
 		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -199,13 +199,13 @@ func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error)
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizeDeleteMethod(user, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	if err := s.simulator.Delete(key); err != nil {
 		log.WithError(err).Error("could not process incoming request")
 		return nil, err
@@ -216,16 +216,16 @@ func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error)
 
 func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, error) {
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_deleteAll)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
 		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -233,13 +233,13 @@ func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, err
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizeDeleteAllMethod(user, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	if err := s.simulator.DeleteAll(key); err != nil {
 		log.WithError(err).Error("could not process incoming request")
 		return nil, err
@@ -250,9 +250,9 @@ func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, err
 
 func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_watch)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	ctx := stream.Context()
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
@@ -260,7 +260,7 @@ func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
 		return err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -268,7 +268,7 @@ func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizeWatchMethod(user, key); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return err
@@ -277,13 +277,13 @@ func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
 	send := simulator.NewChannel()
 	defer send.Close()
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	if err := s.simulator.Watch(key, send); err != nil {
 		log.WithError(err).Error("could not process incoming request")
 		return err
 	}
 
-	log.Info("starting to send answer of processed request")
+	log.Debug("starting to send answer of processed request")
 	for {
 		message := <-send.Ch
 
@@ -300,16 +300,16 @@ func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
 
 func (s *Server) SetUserStatus(ctx context.Context, report *api.Report) (*empty.Empty, error) {
 	log := s.log.WithField("asked-name", report.Name).WithField("status", report.Status).WithField("method", api.Method_setUserStatus)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
 		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -317,13 +317,13 @@ func (s *Server) SetUserStatus(ctx context.Context, report *api.Report) (*empty.
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizeSetUserStatusMethod(user, report); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	if err := s.manager.UpdateStatus(report.Name, report.Status); err != nil {
 		log.WithError(err).Error("could not process incoming request")
 		return nil, err
@@ -337,9 +337,9 @@ func (s *Server) SetUserStatus(ctx context.Context, report *api.Report) (*empty.
 
 func (s *Server) GetActors(empty *empty.Empty, stream api.DirectorAPI_GetActorsServer) error {
 	log := s.log.WithField("method", api.Method_getActors)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	ctx := stream.Context()
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
@@ -347,7 +347,7 @@ func (s *Server) GetActors(empty *empty.Empty, stream api.DirectorAPI_GetActorsS
 		return err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -355,20 +355,20 @@ func (s *Server) GetActors(empty *empty.Empty, stream api.DirectorAPI_GetActorsS
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizeGetActorsMethod(user); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return err
 	}
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	users, err := s.manager.GetActors()
 	if err != nil {
 		log.WithError(err).Error("could not process incoming request")
 		return err
 	}
 
-	log.Info("starting to send answer of processed request")
+	log.Debug("starting to send answer of processed request")
 	for _, u := range users {
 		if err := stream.Send(u); err != nil {
 			log.WithError(err).Error("could not send answer of processed request, closing the connection...")
@@ -381,16 +381,16 @@ func (s *Server) GetActors(empty *empty.Empty, stream api.DirectorAPI_GetActorsS
 
 func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empty, error) {
 	log := s.log.WithField("method", api.Method_putResult)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
 		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -398,7 +398,7 @@ func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empt
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizePutResultMethod(user); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
@@ -415,16 +415,16 @@ func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empt
 
 func (s *Server) ImReady(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
 	log := s.log.WithField("method", api.Method_imReady)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
-	log.Info("starting to extract token from context")
+	log.Debug("starting to extract token from context")
 	token, err := s.extractTokenFromContext(ctx)
 	if err != nil {
 		log.WithError(err).Error("could not extract token form context")
 		return nil, err
 	}
 
-	log.Info("starting to authenticate incoming request")
+	log.Debug("starting to authenticate incoming request")
 	user, err := s.manager.Authenticate(token)
 	if err != nil {
 		log.WithError(err).Error("could not authenticate incoming request")
@@ -432,13 +432,13 @@ func (s *Server) ImReady(ctx context.Context, emp *empty.Empty) (*empty.Empty, e
 	}
 	log = log.WithField("name", user.Name).WithField("role", user.Role)
 
-	log.Info("starting to authorize incoming request")
+	log.Debug("starting to authorize incoming request")
 	if err := s.manager.AuthorizeImReadyMethod(user); err != nil {
 		log.WithError(err).Error("could not authorize incoming request")
 		return nil, err
 	}
 
-	log.Info("starting to process incoming request")
+	log.Debug("starting to process incoming request")
 	if err := s.manager.UpdateReadiness(user.Name, true); err != nil {
 		log.WithError(err).Error("could not process incoming request")
 		return nil, err
@@ -449,7 +449,7 @@ func (s *Server) ImReady(ctx context.Context, emp *empty.Empty) (*empty.Empty, e
 
 func (s *Server) Ping(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
 	log := s.log.WithField("method", api.Method_ping)
-	log.Info("starting to handle incoming request")
+	log.Debug("starting to handle incoming request")
 
 	return &empty.Empty{}, nil
 }
