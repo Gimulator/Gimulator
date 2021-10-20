@@ -58,7 +58,7 @@ func init() {
 	case "PANIC":
 		logrus.SetLevel(logrus.PanicLevel)
 	default:
-		logrus.SetLevel(logrus.DebugLevel)
+		logrus.SetLevel(logrus.InfoLevel)
 		logrus.WithField("log-level", cmd.LogLevel).Warn(fmt.Sprintf("Invalid log level. Logger will proceed with %s log level", logrus.GetLevel()))
 	}
 
