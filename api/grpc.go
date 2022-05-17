@@ -24,6 +24,8 @@ type Server struct {
 	manager   *manager.Manager
 	simulator *simulator.Simulator
 	log       *logrus.Entry
+
+	mutex     sync.Mutex
 }
 
 func NewServer(manager *manager.Manager, sim *simulator.Simulator) (*Server, error) {
@@ -34,7 +36,7 @@ func NewServer(manager *manager.Manager, sim *simulator.Simulator) (*Server, err
 	}, nil
 }
 
-func (s *Server) FinalizeGame(result *api.Result) {
+func (s *Server) finalizeGame(result *api.Result) {
 	s.log.Debug("starting to process incoming request")
 	for {
 		err := s.manager.Epilogue.Write(result)
@@ -56,6 +58,9 @@ func (s *Server) FinalizeGame(result *api.Result) {
 ///////////////////////////////////////////////////////
 
 func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_get)
 	log.Debug("starting to handle incoming request")
 
@@ -91,6 +96,9 @@ func (s *Server) Get(ctx context.Context, key *api.Key) (*api.Message, error) {
 }
 
 func (s *Server) GetAll(key *api.Key, stream api.MessageAPI_GetAllServer) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_getAll)
 	log.Debug("starting to handle incoming request")
 
@@ -136,6 +144,9 @@ func (s *Server) GetAll(key *api.Key, stream api.MessageAPI_GetAllServer) error 
 }
 
 func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("key", message.Key.String()).WithField("method", api.Method_put)
 	log.Debug("starting to handle incoming request")
 
@@ -181,6 +192,9 @@ func (s *Server) Put(ctx context.Context, message *api.Message) (*empty.Empty, e
 }
 
 func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_delete)
 	log.Debug("starting to handle incoming request")
 
@@ -215,6 +229,9 @@ func (s *Server) Delete(ctx context.Context, key *api.Key) (*empty.Empty, error)
 }
 
 func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_deleteAll)
 	log.Debug("starting to handle incoming request")
 
@@ -249,6 +266,9 @@ func (s *Server) DeleteAll(ctx context.Context, key *api.Key) (*empty.Empty, err
 }
 
 func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("key", key.String()).WithField("method", api.Method_watch)
 	log.Debug("starting to handle incoming request")
 
@@ -299,6 +319,9 @@ func (s *Server) Watch(key *api.Key, stream api.MessageAPI_WatchServer) error {
 ///////////////////////////////////////////////////////
 
 func (s *Server) SetUserStatus(ctx context.Context, report *api.Report) (*empty.Empty, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("asked-name", report.Name).WithField("status", report.Status).WithField("method", api.Method_setUserStatus)
 	log.Debug("starting to handle incoming request")
 
@@ -336,6 +359,9 @@ func (s *Server) SetUserStatus(ctx context.Context, report *api.Report) (*empty.
 ///////////////////////////////////////////////////////
 
 func (s *Server) GetActors(empty *empty.Empty, stream api.DirectorAPI_GetActorsServer) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("method", api.Method_getActors)
 	log.Debug("starting to handle incoming request")
 
@@ -380,6 +406,9 @@ func (s *Server) GetActors(empty *empty.Empty, stream api.DirectorAPI_GetActorsS
 }
 
 func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empty, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("method", api.Method_putResult)
 	log.Debug("starting to handle incoming request")
 
@@ -404,7 +433,7 @@ func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empt
 		return nil, err
 	}
 
-	go s.FinalizeGame(result)
+	go s.finalizeGame(result)
 
 	return &empty.Empty{}, nil
 }
@@ -414,6 +443,9 @@ func (s *Server) PutResult(ctx context.Context, result *api.Result) (*empty.Empt
 ///////////////////////////////////////////////////////
 
 func (s *Server) ImReady(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("method", api.Method_imReady)
 	log.Debug("starting to handle incoming request")
 
@@ -448,6 +480,9 @@ func (s *Server) ImReady(ctx context.Context, emp *empty.Empty) (*empty.Empty, e
 }
 
 func (s *Server) Ping(ctx context.Context, emp *empty.Empty) (*empty.Empty, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	log := s.log.WithField("method", api.Method_ping)
 	log.Debug("starting to handle incoming request")
 

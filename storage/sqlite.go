@@ -44,7 +44,7 @@ func NewSqlite(path string, config *config.Config) (*Sqlite, error) {
 /////////////////////////////////////////////
 
 func (s *Sqlite) prepare(path string, config *config.Config) error {
-	s.log.Info("starting to setup sqlite")
+	s.log.Info("starting to setup sqlite storage")
 
 	s.log.WithField("path", path).Info("starting to create sqlite file")
 	// if path != memoryPath {
@@ -183,8 +183,8 @@ func (s *Sqlite) fillRuleTable(rules []Rule) error { ///////////////////////////
 /////////////////////////////////////////////
 
 func (s *Sqlite) Put(message *api.Message) error {
-	// **Attention**: I suppose the owner of message was validated before calling this fucntion,
-	// the reason is performance.
+	// **Attention**: I suppose the owner of message was validated before calling this function.
+	// The reason is performance.
 	mes := &Message{
 		Type:      message.Key.Type,
 		Name:      message.Key.Name,
@@ -517,6 +517,8 @@ func (s *Sqlite) sqliteRuleToAPIKey(src *Rule) *api.Key {
 /////////////////////////////////////////////
 /////////////////////////////////// Types ///
 /////////////////////////////////////////////
+
+// We don't inherit from gorm.Model for this model since our primary key is different from the default one that gorm provides
 type User struct {
 	CreatedAt            time.Time      `gorm:""`
 	UpdatedAt            time.Time      `gorm:""`
@@ -540,6 +542,7 @@ type Rule struct {
 	Character api.Character `gorm:"notNull;default:0"`
 }
 
+// We don't inherit from gorm.Model for this model since our primary key is different from the default one that gorm provides
 type Message struct {
 	CreatedAt time.Time      `gorm:""`
 	UpdatedAt time.Time      `gorm:""`
