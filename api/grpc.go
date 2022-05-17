@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"time"
+	"sync"
 
 	"github.com/Gimulator/Gimulator/manager"
 	"github.com/Gimulator/Gimulator/simulator"
